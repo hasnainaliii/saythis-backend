@@ -1,0 +1,79 @@
+===================
+BASE URL :> /api/v1
+===================
+
+
+=================================================
+1) 🔐 AUTH - 4 ENDPOINTS (+ 2 OPTIONAL FOR PHASE 2)
+=================================================
+POST   /auth/register
+POST   /auth/login
+POST   /auth/refresh
+POST   /auth/logout
+
+[OPTIONAL - CAN DEFER TO PHASE 2]
+POST   /auth/forgot-password
+POST   /auth/reset-password
+
+
+======================
+2) 👤 USER - 3 ENDPOINTS
+======================
+GET    /users/me
+PATCH  /users/me
+DELETE /users/me                 (soft delete)
+
+===================================
+3) 🧠 THERAPY EXERCISES - 2 ENDPOINTS
+===================================
+GET /therapy/exercises
+GET /therapy/exercises/{id}
+
+
+
+===================================
+4) 📊 PROGRESS - 4 ENDPOINTS
+===================================
+POST /progress/complete-exercise
+GET  /progress/summary
+GET  /progress/streak
+GET  /progress/history
+
+
+============================
+5) 🎙️ RECORDINGS - 5 ENDPOINTS
+============================
+POST   /recordings/upload-url
+POST   /recordings
+GET    /recordings
+GET    /recordings/{id}
+DELETE /recordings/{id}
+
+
+==================================
+6) 🏥 HEALTH - 2 ENDPOINTS [OPTIONAL]
+==================================
+GET /health
+GET /health/ready
+
+
+PRODUCTION-GRADE STANDARDS (NON-NEGOTIABLE)
+✅ UUIDs for all IDs
+✅ Soft deletes where needed (users, recordings)
+✅ Database constraints > app validation
+✅ Context propagation everywhere
+✅ Structured logging (zap or slog)
+✅ Centralized error handling middleware
+✅ Versioned APIs (/api/v1)
+✅ Request validation (validator library)
+✅ Rate limiting on auth endpoints
+✅ JWT with refresh token rotation
+✅ Pre-signed URLs for file operations
+
+
+
+
+
+
+
+
