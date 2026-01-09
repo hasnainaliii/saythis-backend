@@ -1,26 +1,38 @@
 package server
 
 import (
-	"fmt"
+	"encoding/json"
+	"log"
 	"net/http"
 	"saythis-backend/internal/config"
+	"saythis-backend/internal/user/handler"
+	"saythis-backend/internal/user/repository"
+	"saythis-backend/internal/user/usecase"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
+func NewRouter(db *pgxpool.Pool, cfg *config.Config, logger *log.Logger) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", helloHandler)
+
+	// -----------------------------
+	// User routes
+	// -----------------------------
+	userRepo := repository.NewPostgresUserRepository(db)    // Postgres implementation
+	userUseCase := usecase.NewUserUseCase(userRepo, logger) // Inject repo into usecase
+	registerHandler := handler.NewRegisterUserHandler(userUseCase, logger)
+
+	mux.Handle("POST /users/register", registerHandler)
+
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		if err := db.Ping(r.Context()); err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(map[string]string{"status": "unhealthy"})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	})
+
 	return mux
-}
-
-func helloHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Hello World")
 }
