@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 	"saythis-backend/internal/config"
-	"saythis-backend/internal/user/handler"
-	"saythis-backend/internal/user/repository"
-	"saythis-backend/internal/user/usecase"
+	"saythis-backend/internal/src/user/handler"
+	"saythis-backend/internal/src/user/repository"
+	"saythis-backend/internal/src/user/usecase"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
