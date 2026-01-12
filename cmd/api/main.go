@@ -27,12 +27,13 @@ func main() {
 	if err != nil {
 		logger.Fatalf("❌ Failed to connect to database: %v", err)
 	}
+
 	defer func() {
 		logger.Println("🔌 Closing database connection...")
 		pool.Close()
 	}()
 
-	router := server.NewRouter(pool, cfg)
+	router := server.NewRouter(pool, cfg, logger)
 
 	srv := &http.Server{
 		Addr:         cfg.Port,
