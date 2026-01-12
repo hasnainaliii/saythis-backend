@@ -3,46 +3,42 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
+	"saythis-backend/internal/database"
 	"saythis-backend/internal/src/user/domain"
-
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresUserRepository struct {
-	db *pgxpool.Pool
+	db     database.Querier
+	logger *log.Logger
 }
 
-func NewPostgresUserRepository(db *pgxpool.Pool) *PostgresUserRepository {
+func NewPostgresUserRepository(db *pgxpool.Pool, logger *log.Logger) *PostgresUserRepository {
 	if db == nil {
 		panic("db pool is nil")
 	}
-
+	logger.Printf("[DEBUG] Created PostgresUserRepository with pool address: %p", db)
+	logger.Printf("[DEBUG] Created PostgresUserRepository with pool address: %p", &db)
 	return &PostgresUserRepository{
-		db: db,
+		db:     db,
+		logger: logger,
+	}
+}
+
+func (r *PostgresUserRepository) WithQuerier(q database.Querier) UserRepository {
+	r.logger.Printf("[DEBUG] Swapping PostgresUserRepository querier to: %p", q)
+	return &PostgresUserRepository{
+		db:     q,
+		logger: r.logger,
 	}
 }
 
 func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) error {
+	r.logger.Printf("[DEBUG] Executing UserRepository.Create for user: %s (ID: %s)", user.Email(), user.ID())
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	// query := `
-	// INSERT INTO users (
-	// 	id, email, full_name, role, status, email_verified_at, created_at, updated_at
-	// ) VALUES (
-	// 	$1,$2,$3,$4,$5,$6,$7,$8
-	// )
-	// ON CONFLICT (id) DO UPDATE SET
-	// 	email = EXCLUDED.email,
-	// 	full_name = EXCLUDED.full_name,
-	// 	role = EXCLUDED.role,
-	// 	status = EXCLUDED.status,
-	// 	email_verified_at = EXCLUDED.email_verified_at,
-	// 	updated_at = NOW()
-	// RETURNING created_at, updated_at
-	// `
 	query := `
         INSERT INTO users (
             id, email, full_name, role, status, email_verified_at, created_at, updated_at
@@ -50,8 +46,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
         RETURNING created_at, updated_at
     `
 
-	var createdAt, updatedAt time.Time
-	err := r.db.QueryRow(ctx, query,
+	args := []any{
 		user.ID(),
 		user.Email(),
 		user.FullName(),
@@ -60,12 +55,18 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 		user.EmailVerifiedAt(),
 		user.CreatedAt(),
 		user.UpdatedAt(),
-	).Scan(&createdAt, &updatedAt)
+	}
+	r.logger.Printf("[DEBUG] SQL Query: %s | Args: %+v", query, args)
+
+	var createdAt, updatedAt time.Time
+	err := r.db.QueryRow(ctx, query, args...).Scan(&createdAt, &updatedAt)
 	if err != nil {
+		r.logger.Printf("[ERROR] Failed to save user to DB: %v", err)
 		return fmt.Errorf("failed to save user: %w", err)
 	}
 
 	user.SetCreatedAt(createdAt)
 	user.SetUpdatedAt(updatedAt)
+	r.logger.Printf("[DEBUG] User saved successfully. CreatedAt: %v, UpdatedAt: %v", createdAt, updatedAt)
 	return nil
 }

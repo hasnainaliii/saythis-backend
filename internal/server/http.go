@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 	"saythis-backend/internal/config"
-	"saythis-backend/internal/src/user/handler"
+	AuthHandler "saythis-backend/internal/src/auth/handler"
+	AuthRepository "saythis-backend/internal/src/auth/repository"
+	AuthUseCase "saythis-backend/internal/src/auth/usecase"
 	"saythis-backend/internal/src/user/repository"
 	"saythis-backend/internal/src/user/usecase"
 
@@ -13,19 +15,46 @@ import (
 )
 
 func NewRouter(db *pgxpool.Pool, cfg *config.Config, logger *log.Logger) http.Handler {
+	logger.Println("[BOOT] Initializing NewRouter and dependencies...")
 	mux := http.NewServeMux()
 
 	// -----------------------------
-	// User routes
+	// Database Dependencies
 	// -----------------------------
-	userRepo := repository.NewPostgresUserRepository(db)    // Postgres implementation
-	userUseCase := usecase.NewUserUseCase(userRepo, logger) // Inject repo into usecase
-	registerHandler := handler.NewRegisterUserHandler(userUseCase, logger)
 
-	mux.Handle("POST /users/register", registerHandler)
+	logger.Println("[BOOT] Setting up User layer...")
+	userRepo := repository.NewPostgresUserRepository(db, logger)
+	userUseCase := usecase.NewUserUseCase(userRepo, logger)
 
+	logger.Println("[BOOT] Setting up Auth layer...")
+	authRepo := AuthRepository.NewPostgresAuthRepository(db, logger)
+	authUseCase := AuthUseCase.NewRegisterAuthUseCase(authRepo, logger)
+
+	logger.Println("[BOOT] Setting up Orchestrator...")
+	registerOrchestrator := AuthUseCase.NewRegisterOrchestrator(
+		db,
+		userUseCase,
+		authUseCase,
+		userRepo,
+		authRepo,
+		logger,
+	)
+
+	logger.Println("[BOOT] Setting up Auth Handlers...")
+	registerHandler := AuthHandler.NewRegisterHandler(registerOrchestrator, logger)
+
+	// -----------------------------
+	// Routes---USER&AUTH Routes
+	// -----------------------------
+
+	logger.Println("[BOOT] Registering Routes...")
+	mux.Handle("POST /auth/register", registerHandler)
+
+	// Health check
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		logger.Println("[HEALTH] GET /health check")
 		if err := db.Ping(r.Context()); err != nil {
+			logger.Printf("[HEALTH] [ERROR] Database ping failed: %v", err)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			json.NewEncoder(w).Encode(map[string]string{"status": "unhealthy"})
 			return
@@ -34,5 +63,6 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config, logger *log.Logger) http.Ha
 		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 	})
 
+	logger.Println("[BOOT] Router initialization complete ✅")
 	return mux
 }
