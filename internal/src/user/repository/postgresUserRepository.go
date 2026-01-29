@@ -2,8 +2,7 @@ package repository
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"saythis-backend/internal/apperror"
 	"saythis-backend/internal/database"
 	"saythis-backend/internal/src/user/domain"
 	"time"
@@ -12,32 +11,29 @@ import (
 )
 
 type PostgresUserRepository struct {
-	db     database.Querier
-	logger *log.Logger
+	db database.Querier
 }
 
-func NewPostgresUserRepository(db *pgxpool.Pool, logger *log.Logger) *PostgresUserRepository {
+func NewPostgresUserRepository(db *pgxpool.Pool) *PostgresUserRepository {
 	if db == nil {
 		panic("db pool is nil")
 	}
-	logger.Printf("[DEBUG] Created PostgresUserRepository with pool address: %p", db)
-	logger.Printf("[DEBUG] Created PostgresUserRepository with pool address: %p", &db)
 	return &PostgresUserRepository{
-		db:     db,
-		logger: logger,
+		db: db,
 	}
 }
 
 func (r *PostgresUserRepository) WithQuerier(q database.Querier) UserRepository {
-	r.logger.Printf("[DEBUG] Swapping PostgresUserRepository querier to: %p", q)
 	return &PostgresUserRepository{
-		db:     q,
-		logger: r.logger,
+		db: q,
 	}
 }
 
+var userConstraintMapping = map[string]*apperror.AppError{
+	"users_email_key": apperror.ErrDuplicateEmail,
+}
+
 func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) error {
-	r.logger.Printf("[DEBUG] Executing UserRepository.Create for user: %s (ID: %s)", user.Email(), user.ID())
 
 	query := `
         INSERT INTO users (
@@ -56,17 +52,17 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 		user.CreatedAt(),
 		user.UpdatedAt(),
 	}
-	r.logger.Printf("[DEBUG] SQL Query: %s | Args: %+v", query, args)
 
 	var createdAt, updatedAt time.Time
 	err := r.db.QueryRow(ctx, query, args...).Scan(&createdAt, &updatedAt)
 	if err != nil {
-		r.logger.Printf("[ERROR] Failed to save user to DB: %v", err)
-		return fmt.Errorf("failed to save user: %w", err)
+		if appErr := apperror.MapPostgresError(err, userConstraintMapping); appErr != nil {
+			return appErr
+		}
+		return apperror.Wrap(err, "DATABASE_ERROR", "failed to save user", 500)
 	}
 
 	user.SetCreatedAt(createdAt)
 	user.SetUpdatedAt(updatedAt)
-	r.logger.Printf("[DEBUG] User saved successfully. CreatedAt: %v, UpdatedAt: %v", createdAt, updatedAt)
 	return nil
 }

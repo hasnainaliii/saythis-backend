@@ -3,13 +3,13 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
 	"saythis-backend/internal/src/auth/repository"
 	userDomain "saythis-backend/internal/src/user/domain"
 	userRepository "saythis-backend/internal/src/user/repository"
 	userUseCase "saythis-backend/internal/src/user/usecase"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 type RegisterOrchestrator struct {
@@ -18,7 +18,6 @@ type RegisterOrchestrator struct {
 	authUC   *RegisterAuthUseCase
 	userRepo userRepository.UserRepository
 	authRepo repository.AuthRepository
-	logger   *log.Logger
 }
 
 func NewRegisterOrchestrator(
@@ -27,68 +26,61 @@ func NewRegisterOrchestrator(
 	authUC *RegisterAuthUseCase,
 	userRepo userRepository.UserRepository,
 	authRepo repository.AuthRepository,
-	logger *log.Logger,
+
 ) *RegisterOrchestrator {
-	logger.Printf("[DEBUG] Created RegisterOrchestrator")
 	return &RegisterOrchestrator{
 		pool:     pool,
 		userUC:   userUC,
 		authUC:   authUC,
 		userRepo: userRepo,
 		authRepo: authRepo,
-		logger:   logger,
 	}
 }
 
 func (o *RegisterOrchestrator) Register(ctx context.Context, email, fullName, password string) (*userDomain.User, error) {
-	o.logger.Printf("[FLOW] RegisterOrchestrator.Register triggered for Email: %s, FullName: %s", email, fullName)
 
 	tx, err := o.pool.Begin(ctx)
 	if err != nil {
-		o.logger.Printf("[ERROR] [TX] Failed to begin transaction: %v", err)
+		zap.S().Errorw("Failed to begin transaction", "email", email, "error", err)
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	o.logger.Printf("[DEBUG] [TX] Transaction started. Tx Address: %p", tx)
 
 	defer func() {
 		if p := recover(); p != nil {
-			o.logger.Printf("[PANIC] [TX] Panic detected, rolling back: %v", p)
-			tx.Rollback(ctx)
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				zap.S().Errorw("Failed to rollback on panic", "error", rbErr)
+			}
 			panic(p)
 		}
 	}()
 
-	o.logger.Println("[DEBUG] [TX] Creating transaction-scoped repositories and usecases...")
 	txUserRepo := o.userRepo.WithQuerier(tx)
 	txAuthRepo := o.authRepo.WithQuerier(tx)
 
 	txUserUC := o.userUC.WithRepository(txUserRepo)
 	txAuthUC := o.authUC.WithRepository(txAuthRepo)
 
-	o.logger.Println("[STEP 1] Calling UserUseCase.RegisterUser...")
-	user, err := txUserUC.RegisterUser(ctx, email, fullName)
+	user, err := txUserUC.CreateUser(ctx, email, fullName)
 	if err != nil {
-		o.logger.Printf("[ERROR] [STEP 1] User registration failed: %v. Rolling back transaction.", err)
-		tx.Rollback(ctx)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			zap.S().Errorw("Failed to rollback transaction", "error", rbErr)
+		}
 		return nil, err
 	}
-	o.logger.Printf("[DEBUG] [STEP 1] User created successfully. ID: %s", user.ID())
 
-	o.logger.Println("[STEP 2] Calling RegisterAuthUseCase.Execute...")
 	err = txAuthUC.Execute(ctx, user.ID(), password)
 	if err != nil {
-		o.logger.Printf("[ERROR] [STEP 2] Auth creation failed: %v. Rolling back transaction.", err)
-		tx.Rollback(ctx)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			zap.S().Errorw("Failed to rollback transaction", "error", rbErr)
+		}
 		return nil, err
 	}
-	o.logger.Println("[DEBUG] [STEP 2] Auth credentials created successfully.")
 
-	o.logger.Println("[TX] Attempting to commit transaction...")
 	if err := tx.Commit(ctx); err != nil {
-		o.logger.Printf("[ERROR] [TX] Transaction commit failed: %v", err)
+		zap.S().Errorw("Failed to commit transaction", "email", email, "error", err)
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
-	o.logger.Println("[TX] Transaction committed successfully ✅")
 
+	zap.S().Debugw("Registration transaction completed", "email", email, "user_id", user.ID())
 	return user, nil
 }

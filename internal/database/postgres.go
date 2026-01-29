@@ -2,11 +2,11 @@ package database
 
 import (
 	"context"
-	"log"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 // Querier defines the interface for database operations,
@@ -22,23 +22,23 @@ func Connect(databaseURL string) (*pgxpool.Pool, error) {
 
 	config, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
-		log.Printf("Unable to parse the database url: %v", err)
+		zap.S().Errorw("Unable to parse database URL", "error", err)
 		return nil, err
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		log.Printf("Unable to Create conncection pool: %v", err)
+		zap.S().Errorw("Unable to create connection pool", "error", err)
 		return nil, err
 	}
 
 	err = pool.Ping(ctx)
 	if err != nil {
-		log.Printf("Unable to ping database: %v", err)
+		zap.S().Errorw("Unable to ping database", "error", err)
 		pool.Close()
 		return nil, err
 	}
 
-	log.Printf("Successfully connected to the database ✅")
+	zap.S().Info("✅ Database connected successfully")
 	return pool, nil
 }

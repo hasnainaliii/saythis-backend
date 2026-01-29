@@ -3,19 +3,21 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
+	"saythis-backend/internal/apperror"
+	authDomain "saythis-backend/internal/src/auth/domain"
 	"saythis-backend/internal/src/auth/usecase"
 	userDomain "saythis-backend/internal/src/user/domain"
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	FullName string `json:"full_name" validate:"required,min=2"`
-	Password string `json:"password" validate:"required,min=8"`
+	Email    string `json:"email"`
+	FullName string `json:"full_name"`
+	Password string `json:"password"`
 }
 
 type RegisterResponse struct {
@@ -25,50 +27,54 @@ type RegisterResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type RegisterHandler struct {
-	orchestrator *usecase.RegisterOrchestrator
-	logger       *log.Logger
+// ErrorResponse provides a structured error response.
+type ErrorResponse struct {
+	Error ErrorDetail `json:"error"`
 }
 
-func NewRegisterHandler(orchestrator *usecase.RegisterOrchestrator, logger *log.Logger) *RegisterHandler {
-	logger.Printf("[DEBUG] Created RegisterHandler with orchestrator: %p", orchestrator)
+type ErrorDetail struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type RegisterHandler struct {
+	orchestrator *usecase.RegisterOrchestrator
+}
+
+func NewRegisterHandler(orchestrator *usecase.RegisterOrchestrator) *RegisterHandler {
 	return &RegisterHandler{
 		orchestrator: orchestrator,
-		logger:       logger,
 	}
 }
 
 func (h *RegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.logger.Printf("[API] Incoming registration request: %s %s", r.Method, r.URL.Path)
 
 	if r.Method != http.MethodPost {
-		h.logger.Printf("[WARN] Method not allowed: %s", r.Method)
-		h.respondWithError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		h.respondWithError(w, "METHOD_NOT_ALLOWED", "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.logger.Printf("[ERROR] Failed to decode request body: %v", err)
-		h.respondWithError(w, "Invalid request body", http.StatusBadRequest)
+		h.respondWithError(w, "INVALID_REQUEST", "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	h.logger.Printf("[DEBUG] Request decoded: Email=%s, FullName=%s, Password=[REDACTED]", req.Email, req.FullName)
 
 	if req.Email == "" || req.FullName == "" || req.Password == "" {
-		h.logger.Printf("[WARN] Missing required fields in request")
-		h.respondWithError(w, "Missing required fields", http.StatusBadRequest)
+		h.respondWithError(w, "MISSING_FIELDS", "Missing required fields", http.StatusBadRequest)
 		return
 	}
 
 	ctx := r.Context()
 
-	h.logger.Println("[DEBUG] Handing over to RegisterOrchestrator...")
+	zap.S().Infow("User registration attempt", "email", req.Email)
 	user, err := h.orchestrator.Register(ctx, req.Email, req.FullName, req.Password)
 	if err != nil {
 		h.handleError(w, err)
 		return
 	}
+
+	zap.S().Infow("User registered successfully", "email", req.Email, "user_id", user.ID())
 
 	resp := RegisterResponse{
 		ID:        user.ID(),
@@ -77,38 +83,49 @@ func (h *RegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: user.CreatedAt(),
 	}
 
-	h.logger.Printf("[API] Successfully registered user: %s. Returning 201 Created.", user.ID())
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (h *RegisterHandler) handleError(w http.ResponseWriter, err error) {
-	h.logger.Printf("[ERROR] Registration failed: %v", err)
 
+	// Check for AppError first (database constraint errors, etc.)
+	var appErr *apperror.AppError
+	if errors.As(err, &appErr) {
+		h.respondWithError(w, appErr.Code, appErr.Message, appErr.HTTPStatus)
+		return
+	}
+
+	// Handle domain validation errors
 	switch {
-	case errors.Is(err, userDomain.ErrEmptyEmail),
-		errors.Is(err, userDomain.ErrInvalidEmail),
-		errors.Is(err, userDomain.ErrEmptyFullName),
-		errors.Is(err, userDomain.ErrInvalidFullNameLength):
-		h.logger.Printf("[INFO] Error mapped to 400 Bad Request")
-		h.respondWithError(w, err.Error(), http.StatusBadRequest)
-
-	case err.Error() == "password must be at least 8 characters",
-		err.Error() == "password must contain at least one number",
-		err.Error() == "password must contain at least one special character":
-		h.logger.Printf("[INFO] Error mapped to 400 Bad Request (Password policy)")
-		h.respondWithError(w, err.Error(), http.StatusBadRequest)
-
+	case errors.Is(err, userDomain.ErrEmptyEmail):
+		h.respondWithError(w, "EMPTY_EMAIL", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, userDomain.ErrInvalidEmail):
+		h.respondWithError(w, "INVALID_EMAIL", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, userDomain.ErrEmptyFullName):
+		h.respondWithError(w, "EMPTY_FULL_NAME", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, userDomain.ErrInvalidFullNameLength):
+		h.respondWithError(w, "INVALID_FULL_NAME_LENGTH", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, authDomain.ErrPasswordTooShort):
+		h.respondWithError(w, "PASSWORD_TOO_SHORT", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, authDomain.ErrPasswordMissingNumber):
+		h.respondWithError(w, "PASSWORD_MISSING_NUMBER", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, authDomain.ErrPasswordMissingSpecialChar):
+		h.respondWithError(w, "PASSWORD_MISSING_SPECIAL_CHAR", err.Error(), http.StatusBadRequest)
 	default:
-		h.logger.Printf("[CRITICAL] Unhandled error: %v. Returning 500.", err)
-		h.respondWithError(w, "Internal server error", http.StatusInternalServerError)
+		zap.S().Errorw("Registration failed", "error", err)
+		h.respondWithError(w, "INTERNAL_ERROR", "Internal server error", http.StatusInternalServerError)
 	}
 }
 
-func (h *RegisterHandler) respondWithError(w http.ResponseWriter, message string, code int) {
-	h.logger.Printf("[API] Response: %d | Message: %s", code, message)
+func (h *RegisterHandler) respondWithError(w http.ResponseWriter, code, message string, httpStatus int) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+	w.WriteHeader(httpStatus)
+	_ = json.NewEncoder(w).Encode(ErrorResponse{
+		Error: ErrorDetail{
+			Code:    code,
+			Message: message,
+		},
+	})
 }

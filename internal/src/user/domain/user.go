@@ -37,6 +37,10 @@ func NewUser(email string, fullName string, role UserRole, TimeNow time.Time) (*
 		return nil, ErrEmptyEmail
 	}
 
+	if !emailRegex.MatchString(email) {
+		return nil, ErrInvalidEmail
+	}
+
 	if strings.TrimSpace(fullName) == "" {
 		return nil, ErrEmptyFullName
 	}
