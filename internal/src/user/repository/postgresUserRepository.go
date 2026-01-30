@@ -66,3 +66,25 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 	user.SetUpdatedAt(updatedAt)
 	return nil
 }
+
+func (r *PostgresUserRepository) SoftDelete(ctx context.Context, userID string) error {
+	query := `
+        UPDATE users 
+        SET deleted_at = NOW(), 
+            status = 'deleted', 
+            updated_at = NOW()
+        WHERE id = $1 
+          AND deleted_at IS NULL
+    `
+
+	tag, err := r.db.Exec(ctx, query, userID)
+	if err != nil {
+		return apperror.Wrap(err, "DATABASE_ERROR", "failed to delete user", 500)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return apperror.New("USER_NOT_FOUND", "User not found or already deleted", 404)
+	}
+
+	return nil
+}

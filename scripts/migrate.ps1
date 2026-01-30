@@ -1,20 +1,26 @@
 # -----------------------------
-# migrate.ps1 (fixed for Windows + scripts folder)
+# migrate.ps1 (Run from inside /scripts folder)
 # -----------------------------
 
-# Load .env from project root
-Get-Content ..\.env | ForEach-Object {
-    if ($_ -match '^([^#][^=]+)=(.+)$') {
-        $name = $matches[1].Trim()
-        $value = $matches[2].Trim()
-        Set-Item -Path "env:$name" -Value $value
+# Load .env from PROJECT ROOT (../.env)
+if (Test-Path ..\.env) {
+    Get-Content ..\.env | ForEach-Object {
+        if ($_ -match '^([^#][^=]+)=(.+)$') {
+            $name = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            Set-Item -Path "env:$name" -Value $value
+        }
     }
+}
+else {
+    Write-Warning "⚠️  .env file not found at ..\.env. Ensure you run this from the /scripts directory."
 }
 
 $command = $args[0]
 $name = $args[1]
 
-# Base path for migrations (always from project root)
+# Migrations folder relative to /scripts execution (Parent Directory)
+# Use ../migrations format which works for golang-migrate on Windows
 $migrationsPath = "../migrations"
 
 switch ($command) {
@@ -30,9 +36,16 @@ switch ($command) {
         }
     }
 
+    "drop" {
+        $confirm = Read-Host "THIS WILL DELETE ALL TABLES. Are you absolutely sure? [y/N]"
+        if ($confirm -eq 'y') {
+            migrate -path $migrationsPath -database $env:DATABASE_URL drop -f
+        }
+    }
+
     "create" { 
         if (-not $name) { Write-Error "Migration name is required for 'create'"; return }
-        migrate create -ext sql -dir ../migrations -seq $name 
+        migrate create -ext sql -dir $migrationsPath -seq $name 
     }
 
     "force" {
@@ -41,6 +54,7 @@ switch ($command) {
     }
 
     Default {
-        Write-Host "Usage: ./migrate.ps1 [up|down|create|force] [name/count/version]"
+        Write-Host "Usage: .\scripts\migrate.ps1 [up|down|drop|create|force] [name/count/version]"
+        Write-Host "NOTE: Run this script from the /scripts directory!"
     }
 }

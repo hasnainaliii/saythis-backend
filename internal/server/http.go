@@ -2,57 +2,65 @@ package server
 
 import (
 	"net/http"
+
 	"saythis-backend/internal/config"
 	"saythis-backend/internal/middleware"
-	AuthHandler "saythis-backend/internal/src/auth/handler"
-	AuthRepository "saythis-backend/internal/src/auth/repository"
-	AuthUseCase "saythis-backend/internal/src/auth/usecase"
-	"saythis-backend/internal/src/user/repository"
-	"saythis-backend/internal/src/user/usecase"
+	authHandler "saythis-backend/internal/src/auth/handler"
+	authRepository "saythis-backend/internal/src/auth/repository"
+	authService "saythis-backend/internal/src/auth/service"
+	authUseCase "saythis-backend/internal/src/auth/usecase"
+	userHandler "saythis-backend/internal/src/user/handler"
+	userRepository "saythis-backend/internal/src/user/repository"
+	userUseCase "saythis-backend/internal/src/user/usecase"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
 
 func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
-	mux := http.NewServeMux()
+	tokenService := authService.NewTokenService(cfg)
 
-	// -----------------------------
-	// Database Dependencies
-	// -----------------------------
+	userRepo := userRepository.NewPostgresUserRepository(db)
+	authRepo := authRepository.NewPostgresAuthRepository(db)
 
-	userRepo := repository.NewPostgresUserRepository(db)
-	userUseCase := usecase.NewUserUseCase(userRepo)
+	userUC := userUseCase.NewUserUseCase(userRepo)
+	registerAuthUC := authUseCase.NewRegisterAuthUseCase(authRepo)
+	loginUC := authUseCase.NewLoginAuthUseCase(authRepo, tokenService)
 
-	authRepo := AuthRepository.NewPostgresAuthRepository(db)
-	authUseCase := AuthUseCase.NewRegisterAuthUseCase(authRepo)
-
-	registerOrchestrator := AuthUseCase.NewRegisterOrchestrator(
+	registerOrchestrator := authUseCase.NewRegisterOrchestrator(
 		db,
-		userUseCase,
-		authUseCase,
+		userUC,
+		registerAuthUC,
 		userRepo,
 		authRepo,
 	)
 
-	registerHandler := AuthHandler.NewRegisterHandler(registerOrchestrator)
+	registerHandler := authHandler.NewRegisterHandler(registerOrchestrator)
+	loginHandler := authHandler.NewLoginHandler(loginUC)
+	refreshHandler := authHandler.NewRefreshHandler(tokenService)
+	meHandler := userHandler.NewMeHandler()
+	deleteMeHandler := userHandler.NewDeleteMeHandler(userUC)
 
-	// -----------------------------
-	// Routes---USER&AUTH Routes
-	// -----------------------------
+	authMW := middleware.AuthMiddleware(tokenService)
 
-	mux.Handle("POST /auth/register", registerHandler)
+	mux := http.NewServeMux()
 
-	zap.S().Info("✅ Router initialized successfully")
+	// Public Routes
+	mux.Handle("POST /api/v1/auth/register", registerHandler)
+	mux.Handle("POST /api/v1/auth/login", loginHandler)
+	mux.Handle("POST /api/v1/auth/refresh", refreshHandler)
 
-	// -----------------------------
-	// Apply Middleware Chain
-	// -----------------------------
-	// Order: Recovery -> Security -> Router
+	// Protected Routes
+	mux.Handle("GET /api/v1/user/me", authMW(meHandler))
+	mux.Handle("DELETE /api/v1/users/me", authMW(deleteMeHandler))
 
-	handler := middleware.RecoveryMiddleware(
-		middleware.SecurityMiddleware(mux),
+	zap.S().Info("✅ Router initialized")
+
+	return applyMiddleware(mux)
+}
+
+func applyMiddleware(handler http.Handler) http.Handler {
+	return middleware.RecoveryMiddleware(
+		middleware.SecurityMiddleware(handler),
 	)
-
-	return handler
 }

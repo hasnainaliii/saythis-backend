@@ -2,10 +2,12 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"saythis-backend/internal/apperror"
 	"saythis-backend/internal/database"
 	"saythis-backend/internal/src/auth/domain"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -58,4 +60,33 @@ func (r *PostgresAuthRepository) Register(ctx context.Context, cred *domain.Cred
 	}
 
 	return nil
+}
+
+func (r *PostgresAuthRepository) GetCredentialsWithUser(ctx context.Context, email string) (*domain.CredentialsWithUser, error) {
+	query := `
+		SELECT u.id, u.email, u.full_name, u.role, u.status, c.password_hash, u.created_at
+		FROM users u
+		JOIN auth_credentials c ON u.id = c.user_id
+		WHERE u.email = $1
+	`
+
+	var cred domain.CredentialsWithUser
+	err := r.db.QueryRow(ctx, query, email).Scan(
+		&cred.UserID,
+		&cred.Email,
+		&cred.FullName,
+		&cred.Role,
+		&cred.Status,
+		&cred.PasswordHash,
+		&cred.CreatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrInvalidCredentials
+		}
+		return nil, apperror.Wrap(err, "DATABASE_ERROR", "failed to fetch credentials", 500)
+	}
+
+	return &cred, nil
 }

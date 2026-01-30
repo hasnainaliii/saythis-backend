@@ -18,6 +18,7 @@ type User struct {
 	emailVerifiedAt *time.Time
 	createdAt       time.Time
 	updatedAt       time.Time
+	deletedAt       *time.Time
 }
 
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
@@ -102,4 +103,14 @@ func (u *User) Suspend(now time.Time) error {
 	u.status = StatusSuspended
 	u.updatedAt = now
 	return nil
+}
+
+func (u *User) DeletedAt() *time.Time {
+	return u.deletedAt
+}
+
+func (u *User) MarkAsDeleted(now time.Time) {
+	u.deletedAt = &now
+	u.status = StatusDeleted
+	u.updatedAt = now
 }

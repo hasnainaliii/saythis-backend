@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// AppError represents a structured application error with HTTP status and error code.
 type AppError struct {
 	Code       string `json:"code"`
 	Message    string `json:"message"`

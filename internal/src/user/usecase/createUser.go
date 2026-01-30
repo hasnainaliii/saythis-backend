@@ -41,3 +41,13 @@ func (uc *UserUseCase) CreateUser(ctx context.Context, email, fullName string) (
 	zap.S().Debugw("User created successfully", "email", email, "user_id", user.ID())
 	return user, nil
 }
+
+func (uc *UserUseCase) DeleteUser(ctx context.Context, userID string) error {
+	if err := uc.repo.SoftDelete(ctx, userID); err != nil {
+		zap.S().Errorw("Failed to delete user", "user_id", userID, "error", err)
+		return err
+	}
+
+	zap.S().Infow("User deleted successfully", "user_id", userID)
+	return nil
+}

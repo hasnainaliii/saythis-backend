@@ -3,15 +3,20 @@ package config
 import (
 	"errors"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
 
 type Config struct {
-	DataBaseURL string
-	Port        string
+	DataBaseURL        string
+	Port               string
+	JWTSecret          string
+	AccessTokenExpiry  time.Duration
+	RefreshTokenExpiry time.Duration
 }
 
 func Load() (*Config, error) {
@@ -21,12 +26,19 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DataBaseURL: os.Getenv("DATABASE_URL"),
-		Port:        os.Getenv("PORT"),
+		DataBaseURL:        os.Getenv("DATABASE_URL"),
+		Port:               os.Getenv("PORT"),
+		JWTSecret:          os.Getenv("JWT_SECRET"),
+		AccessTokenExpiry:  parseDuration(os.Getenv("ACCESS_TOKEN_EXPIRY"), 15*time.Minute),
+		RefreshTokenExpiry: parseDuration(os.Getenv("REFRESH_TOKEN_EXPIRY"), 7*24*time.Hour),
 	}
 
 	if cfg.DataBaseURL == "" {
 		return nil, errors.New("DATABASE_URL is required")
+	}
+
+	if cfg.JWTSecret == "" {
+		return nil, errors.New("JWT_SECRET is required")
 	}
 
 	if cfg.Port == "" {
@@ -40,4 +52,15 @@ func Load() (*Config, error) {
 
 	zap.S().Infow("Configuration loaded", "port", cfg.Port)
 	return cfg, nil
+}
+
+func parseDuration(value string, defaultVal time.Duration) time.Duration {
+	if value == "" {
+		return defaultVal
+	}
+	minutes, err := strconv.Atoi(value)
+	if err != nil {
+		return defaultVal
+	}
+	return time.Duration(minutes) * time.Minute
 }

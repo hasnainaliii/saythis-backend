@@ -8,5 +8,6 @@ import (
 
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.User) error
+	SoftDelete(ctx context.Context, userID string) error
 	WithQuerier(q database.Querier) UserRepository
 }

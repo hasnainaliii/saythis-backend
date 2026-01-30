@@ -8,5 +8,6 @@ import (
 
 type AuthRepository interface {
 	Register(ctx context.Context, cred *domain.Credentials) error
+	GetCredentialsWithUser(ctx context.Context, email string) (*domain.CredentialsWithUser, error)
 	WithQuerier(q database.Querier) AuthRepository
 }

@@ -72,8 +72,257 @@ PRODUCTION-GRADE STANDARDS (NON-NEGOTIABLE)
 
 
 
+use case diagram 
+graph LR
+    %% ==========================================
+    %% 1. ACADEMIC STYLING (Clean & Professional)
+    %% ==========================================
+    classDef actor fill:#37474f,stroke:#263238,stroke-width:2px,color:#fff,rx:5,ry:5;
+    
+    %% Module Colors
+    classDef auth fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#01579b,rx:5,ry:5;   %% Blue
+    classDef onboard fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c,rx:5,ry:5; %% Orange
+    classDef therapy fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#004d40,rx:5,ry:5; %% Teal
+    classDef stats fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c,rx:5,ry:5;   %% Purple
+    classDef admin fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#880e4f,rx:5,ry:5;   %% Pink
+    
+    %% External Services (Dashed Grey)
+    classDef ext fill:#ffffff,stroke:#757575,stroke-width:1px,stroke-dasharray: 5 5,color:#616161,rx:5,ry:5;
+
+    %% ==========================================
+    %% 2. ACTORS
+    %% ==========================================
+    Patient(Patient):::actor
+    Administrator(Administrator):::actor
+
+    %% ==========================================
+    %% 3. SYSTEM BOUNDARY (The App)
+    %% ==========================================
+    subgraph System_Scope [SayThis Mobile Application]
+        direction TB
+
+        %% --- MODULE A: AUTHENTICATION ---
+        subgraph Group_Auth [Authentication and Security]
+            UC01(Register Account):::auth
+            UC02(Secure Login):::auth
+            UC03(Verify Email Address):::auth
+            UC04(Reset Password):::auth
+            UC05(Manage Profile):::auth
+        end
+
+        %% --- MODULE B: ONBOARDING ---
+        subgraph Group_Onboard [Onboarding and Assessment]
+            UC06(Complete Initial Assessment):::onboard
+            UC07(Identify Stuttering Triggers):::onboard
+            UC08(Set Baseline Fluency):::onboard
+        end
+
+        %% --- MODULE C: THERAPY ---
+        subgraph Group_Therapy [Therapy and Practice]
+            UC09(Record Speech Audio):::therapy
+            UC10(View AI Analysis):::therapy
+            UC11(Breathing Exercises):::therapy
+            UC12(Reading Practice):::therapy
+            UC13(Offline Practice Mode):::therapy
+        end
+
+        %% --- MODULE D: ANALYTICS & SUBSCRIPTION ---
+        subgraph Group_Analytics [Analytics and Subscription]
+            UC14(View Fluency Trends):::stats
+            UC15(Export PDF Report):::stats
+            UC16(View Streaks and Badges):::stats
+            UC17(Manage Subscription):::stats
+        end
+
+        %% --- MODULE E: ADMIN ---
+        subgraph Group_Admin [Administration]
+            UC18(Manage User Accounts):::admin
+            UC19(Upload Therapy Content):::admin
+            UC20(View System Statistics):::admin
+        end
+    end
+
+    %% ==========================================
+    %% 4. EXTERNAL SERVICES (ON THE RIGHT)
+    %% ==========================================
+    subgraph External_Services [External Cloud Services]
+        EXT_AI[AssemblyAI Speech Engine]:::ext
+        EXT_Pay[RevenueCat Payments]:::ext
+        EXT_Push[Firebase Notifications]:::ext
+    end
+
+    %% ==========================================
+    %% 5. CONNECTIONS
+    %% ==========================================
+
+    %% Patient Flow
+    Patient --> UC01
+    Patient --> UC02
+    Patient --> UC04
+    Patient --> UC05
+    
+    Patient --> UC06
+    Patient --> UC09
+    Patient --> UC11
+    Patient --> UC12
+    Patient --> UC14
+    Patient --> UC17
+
+    %% Admin Flow
+    Administrator --> UC18
+    Administrator --> UC19
+    Administrator --> UC20
+
+    %% Internal Logic (Includes/Extends)
+    UC01 -.->|Includes| UC03
+    UC06 -.->|Updates| UC08
+    UC09 -.->|Triggers| UC10
+    UC09 -.->|Uses| UC13
+    UC10 -.->|Updates| UC14
+    UC16 -.->|Updates| UC05
+
+    %% External Service Connections (Right Side)
+    UC10 -.->|Sends Audio to| EXT_AI
+    UC17 -.->|Verifies with| EXT_Pay
+    UC16 -.->|Triggers| EXT_Push
+
+    %% Curve Styling
+    linkStyle default interpolate basis
 
 
 
 
 
+activity diagram
+graph TD
+    %% ==========================================================
+    %% 🎨 ADVANCED STYLING (High-End Professional Look)
+    %% ==========================================================
+    
+    %% User Actions (Deep Blue - Active)
+    classDef user fill:#37474f,stroke:#263238,stroke-width:2px,color:#fff,rx:10,ry:10;
+    
+    %% Frontend Processes (Mint/Teal - Interface)
+    classDef app fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#004d40,rx:2,ry:2;
+    
+    %% Backend Logic (Indigo - Computation)
+    classDef backend fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#1a237e,rx:2,ry:2;
+    
+    %% Database/Storage (Cylinders)
+    classDef storage fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c,shape:cylinder;
+    
+    %% Decisions (Yellow Diamonds)
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000,shape:diamond;
+    
+    %% External Services (Grey Dashed)
+    classDef external fill:#ffffff,stroke:#757575,stroke-width:1px,stroke-dasharray: 5 5,color:#616161;
+
+    %% Terminal Nodes
+    classDef term fill:#000,stroke:#000,color:#fff,rx:20,ry:20;
+
+    %% ==========================================================
+    %% 🏁 START / END
+    %% ==========================================================
+    Start((Start)):::term
+    End((End)):::term
+
+    %% ==========================================================
+    %% SWIMLANE 1: USER (Patient)
+    %% ==========================================================
+    subgraph Lane_User [Patient / User]
+        U_Open[Open Application]:::user
+        U_Login[Enter Credentials]:::user
+        U_Select[Select Exercise]:::user
+        U_Permit[Grant Mic Access]:::user
+        U_Record[Tap Record Button]:::user
+        U_Stop[Tap Stop and Analyze]:::user
+        U_View[Review Results]:::user
+    end
+
+    %% ==========================================================
+    %% SWIMLANE 2: FRONTEND (React Native)
+    %% ==========================================================
+    subgraph Lane_App [Mobile Application]
+        A_CheckAuth{Auth Valid?}:::decision
+        A_Dashboard[Load Dashboard]:::app
+        A_CheckLock{Is Content Locked?}:::decision
+        A_Upsell[Show Premium Prompt]:::app
+        A_MicCheck{Permission Granted?}:::decision
+        A_Capture[Capture Audio Stream]:::app
+        A_Payload[Prepare File Payload]:::app
+        A_Render[Render Charts]:::app
+    end
+
+    %% ==========================================================
+    %% SWIMLANE 3: BACKEND (Go Server)
+    %% ==========================================================
+    subgraph Lane_Backend [Backend System]
+        B_Verify[Verify JWT Token]:::backend
+        B_SubCheck[Check Subscription]:::backend
+        B_Receive[Receive Audio File]:::backend
+        B_Fluency[Calculate Fluency Score]:::backend
+        B_SaveDB[(Save Metadata)]:::storage
+        B_Response[Return Analysis JSON]:::backend
+    end
+
+    %% ==========================================================
+    %% SWIMLANE 4: EXTERNAL (Cloud)
+    %% ==========================================================
+    subgraph Lane_Ext [External Services]
+        E_S3[(Oracle Object Storage)]:::storage
+        E_AI[AssemblyAI Service]:::external
+    end
+
+    %% ==========================================================
+    %% 🔗 LOGIC CONNECTIONS
+    %% ==========================================================
+
+    %% Initialization Phase
+    Start --> U_Open
+    U_Open --> A_CheckAuth
+    
+    %% Authentication Loop
+    A_CheckAuth -- No --> U_Login
+    U_Login --> B_Verify
+    B_Verify --> A_CheckAuth
+    A_CheckAuth -- Yes --> A_Dashboard
+
+    %% Selection Phase
+    A_Dashboard --> U_Select
+    U_Select --> B_SubCheck
+    B_SubCheck --> A_CheckLock
+    
+    %% Subscription Loop
+    A_CheckLock -- Yes Locked --> A_Upsell
+    A_Upsell --> A_Dashboard
+    A_CheckLock -- No Unlocked --> A_MicCheck
+
+    %% Hardware Permission Phase
+    A_MicCheck -- No --> U_Permit
+    U_Permit --> A_MicCheck
+    A_MicCheck -- Yes --> U_Record
+
+    %% Recording Phase
+    U_Record --> A_Capture
+    A_Capture --> U_Stop
+    U_Stop --> A_Payload
+    A_Payload --> B_Receive
+
+    %% Processing Phase
+    B_Receive --> E_S3
+    E_S3 --> E_AI
+    E_AI --> B_Fluency
+    B_Fluency --> B_SaveDB
+    B_SaveDB --> B_Response
+
+    %% Completion Phase
+    B_Response --> A_Render
+    A_Render --> U_View
+    U_View --> End
+
+    %% ==========================================================
+    %% ✨ VISUAL POLISH (Smooth Curves)
+    %% ==========================================================
+    linkStyle default interpolate basis stroke:#546e7a,stroke-width:2px;
+
+    
