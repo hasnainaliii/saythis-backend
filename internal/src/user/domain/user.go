@@ -61,6 +61,34 @@ func NewUser(email string, fullName string, role UserRole, TimeNow time.Time) (*
 	}, nil
 }
 
+// ReconstructUser creates a User from database values (for hydration from storage)
+func ReconstructUser(
+	id, email, fullName string,
+	avatarURL *string,
+	role, status string,
+	emailVerifiedAt *time.Time,
+	createdAt, updatedAt time.Time,
+	deletedAt *time.Time,
+) (*User, error) {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &User{
+		id:              parsedID,
+		email:           email,
+		fullName:        fullName,
+		avatarURL:       avatarURL,
+		role:            UserRole(role),
+		status:          UserStatus(status),
+		emailVerifiedAt: emailVerifiedAt,
+		createdAt:       createdAt,
+		updatedAt:       updatedAt,
+		deletedAt:       deletedAt,
+	}, nil
+}
+
 func (u *User) ID() uuid.UUID               { return u.id }
 func (u *User) Email() string               { return u.email }
 func (u *User) FullName() string            { return u.fullName }
@@ -69,6 +97,24 @@ func (u *User) Status() UserStatus          { return u.status }
 func (u *User) CreatedAt() time.Time        { return u.createdAt }
 func (u *User) UpdatedAt() time.Time        { return u.updatedAt }
 func (u *User) EmailVerifiedAt() *time.Time { return u.emailVerifiedAt }
+func (u *User) AvatarURL() *string          { return u.avatarURL }
+
+func (u *User) SetAvatarURL(url *string, now time.Time) {
+	u.avatarURL = url
+	u.updatedAt = now
+}
+
+func (u *User) SetFullName(name string, now time.Time) error {
+	if strings.TrimSpace(name) == "" {
+		return ErrEmptyFullName
+	}
+	if len(name) < minFullNameLength || len(name) > maxFullNameLength {
+		return ErrInvalidFullNameLength
+	}
+	u.fullName = name
+	u.updatedAt = now
+	return nil
+}
 
 func (u *User) SetCreatedAt(t time.Time) {
 	u.createdAt = t
