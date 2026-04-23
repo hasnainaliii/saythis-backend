@@ -1,25 +1,37 @@
-# -----------------------------
-# migrate.ps1 (fixed for Windows + scripts folder)
-# -----------------------------
+# Get the absolute path of the directory this script is in
+$scriptDir = $PSScriptRoot
 
-# Load .env from project root
-Get-Content ..\.env | ForEach-Object {
-    if ($_ -match '^([^#][^=]+)=(.+)$') {
-        $name = $matches[1].Trim()
-        $value = $matches[2].Trim()
-        Set-Item -Path "env:$name" -Value $value
+# Define the root of your project (one folder up)
+$projectRoot = Join-Path -Path $scriptDir -ChildPath ".."
+$envPath = Join-Path -Path $projectRoot -ChildPath ".env"
+$migrationsPath = Join-Path -Path $projectRoot -ChildPath "migrations"
+
+# 1. Load .env safely
+if (Test-Path $envPath) {
+    Get-Content $envPath | ForEach-Object {
+        if ($_ -match '^([^#][^=]+)=(.+)$') {
+            $name = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            [System.Environment]::SetEnvironmentVariable($name, $value, "Process")
+        }
     }
+} else {
+    Write-Host "Warning: .env file not found at $envPath" -ForegroundColor Yellow
 }
 
+# 2. Check if migrate CLI is installed
+if (-not (Get-Command "migrate" -ErrorAction SilentlyContinue)) {
+    Write-Error "The 'migrate' CLI tool is not installed or not in your PATH. Please install it first."
+    return
+}
+
+# 3. Handle Commands
 $command = $args[0]
 $name = $args[1]
 
-# Base path for migrations (always from project root)
-$migrationsPath = "../migrations"
-
 switch ($command) {
-    "up" { 
-        migrate -path $migrationsPath -database $env:DATABASE_URL up 
+    "up" {
+        migrate -path $migrationsPath -database $env:DATABASE_URL up
     }
 
     "down" {
@@ -30,17 +42,17 @@ switch ($command) {
         }
     }
 
-    "create" { 
-        if (-not $name) { Write-Error "Migration name is required for 'create'"; return }
-        migrate create -ext sql -dir ../migrations -seq $name 
+    "create" {
+        if (-not $name) { Write-Error "Migration name is required"; return }
+        migrate create -ext sql -dir $migrationsPath -seq $name
     }
 
     "force" {
-        if (-not $name) { Write-Error "Version number is required for 'force'"; return }
+        if (-not $name) { Write-Error "Version number is required"; return }
         migrate -path $migrationsPath -database $env:DATABASE_URL force $name
     }
 
     Default {
-        Write-Host "Usage: ./migrate.ps1 [up|down|create|force] [name/count/version]"
+        Write-Host "Usage: .\migrate.ps1 [up|down|create|force] [args]"
     }
 }

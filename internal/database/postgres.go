@@ -24,10 +24,7 @@ func Connect(database string) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	pingCtx, pingCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer pingCancel()
-
-	if err = pool.Ping(pingCtx); err != nil {
+	if err = pool.Ping(ctx); err != nil {
 		slog.Error("Unable to ping the database :", "error", err)
 		pool.Close()
 		return nil, err
