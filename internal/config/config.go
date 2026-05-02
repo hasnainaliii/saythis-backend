@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"errors"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -10,20 +10,29 @@ import (
 type Config struct {
 	DatabaseURL string
 	Port        string
+	AppEnv      string
 }
 
 func LoadConfig() (*Config, error) {
 
-	var err error = godotenv.Load()
+	_ = godotenv.Load()
 
-	if err != nil {
-		log.Println("Warning : .env file not found ")
-		return nil, err
-	}
-
-	return &Config{
+	cfg := &Config{
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		Port:        os.Getenv("PORT"),
-	},nil
+		AppEnv:      os.Getenv("APP_ENV"),
+	}
 
+	if cfg.DatabaseURL == "" {
+		return nil, errors.New("DATABASE_URL environment variable is required")
+	}
+
+	if cfg.Port == "" {
+		cfg.Port = ":8080"
+	}
+	if cfg.AppEnv == "" {
+		cfg.AppEnv = "development"
+	}
+
+	return cfg, nil
 }

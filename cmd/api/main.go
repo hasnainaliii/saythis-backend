@@ -16,27 +16,29 @@ import (
 func main() {
 
 	// *******************
-	// Logger intilization
-	// *******************
-
-	_, err := config.InitLogger(config.LoggerConfig{
-		Env:     "development",
-		Service: "Saythis",
-		Level:   slog.LevelDebug,
-		Output:  os.Stdout,
-	})
-
-	if err != nil {
-		panic(err)
-	}
-
-	// *******************
 	// Env intilization
 	// *******************
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		slog.Error("❌ Failed to load configuration: ", "error", err)
+
+		slog.Error(" ❌  Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+
+	// *******************
+	// Logger intilization
+	// *******************
+
+	_, err = config.InitLogger(config.LoggerConfig{
+		Env:     cfg.AppEnv,
+		Service: "saythis",
+		Level:   slog.LevelDebug,
+		Output:  os.Stdout,
+	})
+	if err != nil {
+		slog.Error("❌ Failed to initialise logger", "error", err)
+		os.Exit(1)
 	}
 
 	// *******************
@@ -45,10 +47,11 @@ func main() {
 
 	pool, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
-		slog.Error("❌ Failed to Connect to database: ", "error", err)
+		slog.Error("❌ Failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 	defer func() {
-		slog.Error("🔌 Closing database connection...")
+		slog.Info("🔌 Closing database connection pool...")
 		pool.Close()
 	}()
 
@@ -67,9 +70,8 @@ func main() {
 	}
 
 	serverError := make(chan error, 1)
-
 	go func() {
-		slog.Info("🚀 server is started at http://localhost", "PORT", cfg.Port)
+		slog.Info("🚀 Server listening", "addr", "http://localhost"+cfg.Port)
 		serverError <- srv.ListenAndServe()
 	}()
 
@@ -83,8 +85,10 @@ func main() {
 	select {
 	case err := <-serverError:
 		if err != nil && err != http.ErrServerClosed {
-			slog.Error("❌ Server failed: ", "Error", err)
+			slog.Error("❌ Server error", "error", err)
+			os.Exit(1)
 		}
+
 	case sig := <-shutDown:
 		slog.Info("🛑 Shutdown signal received", "signal", sig)
 
@@ -92,11 +96,10 @@ func main() {
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
-			slog.Error("⚠️  Graceful shutdown failed, forcing close: ", "Error", err)
+			slog.Error("⚠️  Graceful shutdown failed, forcing close", "error", err)
 			if closeErr := srv.Close(); closeErr != nil {
-				slog.Error("❌ Server close failed: ", "error", closeErr)
+				slog.Error("❌ Forced close failed", "error", closeErr)
 			}
-
 		}
 
 		slog.Info("✅ Server stopped gracefully")
