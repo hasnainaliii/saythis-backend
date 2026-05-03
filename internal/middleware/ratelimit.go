@@ -16,9 +16,6 @@ type visitor struct {
 	lastSeen time.Time
 }
 
-// RateLimiter tracks a token-bucket rate limiter per client IP address.
-// It is safe for concurrent use and automatically evicts stale entries to
-// prevent unbounded memory growth.
 type RateLimiter struct {
 	mu       sync.Mutex
 	visitors map[string]*visitor
@@ -26,20 +23,13 @@ type RateLimiter struct {
 	burst    int
 }
 
-// NewRateLimiter creates a RateLimiter.
-//   - r   – sustained request rate (use rate.Every(d) or rate.Limit(n))
-//   - burst – maximum number of requests allowed in a sudden spike
-//
-// Example: NewRateLimiter(rate.Every(time.Second), 10) allows 1 req/s
-// sustained, with bursts up to 10 requests.
 func NewRateLimiter(r rate.Limit, burst int) *RateLimiter {
 	rl := &RateLimiter{
 		visitors: make(map[string]*visitor),
 		rateVal:  r,
 		burst:    burst,
 	}
-	// Background goroutine: sweep the map every minute and remove IPs that
-	// haven't made a request in the last 3 minutes.
+
 	go rl.cleanupVisitors()
 	return rl
 }
@@ -71,12 +61,11 @@ func (rl *RateLimiter) cleanupVisitors() {
 	}
 }
 
-// Limit is the http.Handler middleware. Wrap your router with it via Chain.
 func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
-			// Fallback: use the raw RemoteAddr (covers unit-test scenarios)
+
 			ip = r.RemoteAddr
 		}
 
