@@ -25,7 +25,6 @@ func InitLogger(cfg LoggerConfig) (*slog.Logger, error) {
 
 	var handler slog.Handler
 
-	// Production → JSON logs
 	if cfg.Env == "production" {
 		handler = slog.NewJSONHandler(cfg.Output, &slog.HandlerOptions{
 			Level:     cfg.Level,
@@ -33,7 +32,6 @@ func InitLogger(cfg LoggerConfig) (*slog.Logger, error) {
 		})
 	} else {
 
-		// Development → colored logs
 		handler = tint.NewHandler(cfg.Output, &tint.Options{
 			Level:      cfg.Level,
 			TimeFormat: "15:04:05",

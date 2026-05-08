@@ -6,35 +6,47 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"saythis-backend/internal/auth"
+	authhandler "saythis-backend/internal/auth/handler"
+	authrepo "saythis-backend/internal/auth/repository"
+	authusecase "saythis-backend/internal/auth/usecase"
 	"saythis-backend/internal/config"
 	"saythis-backend/internal/middleware"
-	"saythis-backend/internal/user/handler"
-	"saythis-backend/internal/user/repository"
-	"saythis-backend/internal/user/usecase"
+	userrepo "saythis-backend/internal/user/repository"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 
-	// ************************
-	// ── Dependency wiring ───
-	// ************************
+	// *******************
+	// User
+	// *******************
 
-	userRepo := repository.NewPostgresUserRepo(db)
-	userUseCase := usecase.NewUserUseCase(userRepo)
-	createHandler := handler.NewCreateUserHandler(userUseCase)
+	userRepo := userrepo.NewPostgresUserRepo(db)
 
-	// ***************
-	// ── Routes ───
-	// ***************
+	// *******************
+	// Auth
+	// *******************
+
+	authRepo := authrepo.NewPostgresAuthRepo(db)
+	authUseCase := authusecase.NewAuthUseCase(authRepo, userRepo, auth.NewJWTConfig(cfg))
+	registerHandler := authhandler.NewRegisterHandler(authUseCase)
+	loginHandler := authhandler.NewLoginHandler(authUseCase)
+	refreshHandler := authhandler.NewRefreshHandler(authUseCase)
+
+	// *******************
+	// Routes
+	// *******************
 
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/users", createHandler)
+	mux.Handle("POST /api/v1/auth/register", registerHandler)
+	mux.Handle("POST /api/v1/auth/login", loginHandler)
+	mux.Handle("POST /api/v1/auth/refresh", refreshHandler)
 
-	// ******************
-	// ── MiddleWares ───
-	// ******************
+	// *******************
+	// Middleware
+	// *******************
 
 	rateLimiter := middleware.NewRateLimiter(rate.Every(time.Second), 20)
 

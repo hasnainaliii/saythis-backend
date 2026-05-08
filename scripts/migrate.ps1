@@ -4,7 +4,7 @@ $scriptDir = $PSScriptRoot
 # Define the root of your project (one folder up)
 $projectRoot = Join-Path -Path $scriptDir -ChildPath ".."
 $envPath = Join-Path -Path $projectRoot -ChildPath ".env"
-$migrationsPath = Join-Path -Path $projectRoot -ChildPath "migrations"
+$migrationsPath = (Resolve-Path (Join-Path -Path $projectRoot -ChildPath "migrations")).Path -replace '\\', '/'
 
 # 1. Load .env safely
 if (Test-Path $envPath) {
@@ -31,6 +31,7 @@ $name = $args[1]
 
 switch ($command) {
     "up" {
+        Write-Host "Running migrations from: $migrationsPath" -ForegroundColor Cyan
         migrate -path $migrationsPath -database $env:DATABASE_URL up
     }
 

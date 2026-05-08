@@ -59,6 +59,30 @@ func NewUser(email string, fullName string, role UserRole, timeNow time.Time) (*
 	}, nil
 }
 
+// ReconstitueUser rebuilds a User from a database row.
+// Unlike NewUser it accepts an existing ID and pre-validated data,
+// so it skips validation — data coming out of the DB is already trusted.
+func ReconstitueUser(
+	id uuid.UUID,
+	email, fullName, avatarURL string,
+	role UserRole,
+	status UserStatus,
+	emailVerifiedAt *time.Time,
+	createdAt, updatedAt time.Time,
+) *User {
+	return &User{
+		id:              id,
+		email:           email,
+		fullName:        fullName,
+		avatarURL:       avatarURL,
+		role:            role,
+		status:          status,
+		emailVerifiedAt: emailVerifiedAt,
+		createdAt:       createdAt,
+		updatedAt:       updatedAt,
+	}
+}
+
 // *******
 // Getters
 // *******
