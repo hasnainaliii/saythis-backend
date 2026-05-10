@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"saythis-backend/internal/util"
+	"saythis-backend/internal/helper"
 
 	"golang.org/x/time/rate"
 )
@@ -70,7 +70,7 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 		}
 
 		if !rl.getVisitor(ip).Allow() {
-			util.Error(w, http.StatusTooManyRequests, "too many requests — please slow down")
+			helper.Error(w, http.StatusTooManyRequests, "too many requests — please slow down")
 			return
 		}
 
