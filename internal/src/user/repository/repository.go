@@ -29,4 +29,8 @@ type UserRepository interface {
 	// UpdateFullName changes the user's full name and returns the refreshed user.
 	// Returns ErrUserNotFound if the user does not exist or is not active.
 	UpdateFullName(ctx context.Context, id uuid.UUID, fullName string, updatedAt time.Time) (*domain.User, error)
+
+	// UpdateAvatarURL sets the user's avatar_url and returns the refreshed user.
+	// Returns ErrUserNotFound if the user does not exist or is not active.
+	UpdateAvatarURL(ctx context.Context, id uuid.UUID, avatarURL string, updatedAt time.Time) (*domain.User, error)
 }

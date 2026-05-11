@@ -17,6 +17,12 @@ type AuthRepository interface {
 
 	UpdateLastLogin(ctx context.Context, userID uuid.UUID, lastLogin time.Time) error
 
+	// RecordFailedAttempt increments failed_attempts by 1 for the given user.
+	// When the new count reaches 3 the account is locked for 24 hours by
+	// setting locked_until = NOW() + INTERVAL '24 hours'.
+	// This is a single atomic SQL UPDATE — no race between read and write.
+	RecordFailedAttempt(ctx context.Context, userID uuid.UUID) error
+
 	// ── Refresh tokens ────────────────────────────────────────────────────────
 
 	SaveRefreshToken(ctx context.Context, token *authdomain.RefreshToken) error

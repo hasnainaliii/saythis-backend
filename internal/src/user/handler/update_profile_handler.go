@@ -6,10 +6,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"saythis-backend/internal/helper"
 	"saythis-backend/internal/src/auth"
 	userdomain "saythis-backend/internal/src/user/domain"
 	"saythis-backend/internal/src/user/usecase"
-	"saythis-backend/internal/helper"
 )
 
 // UpdateProfileHandler handles PATCH /api/v1/users/me.
@@ -38,6 +38,7 @@ type userPayload struct {
 	ID        uuid.UUID             `json:"id"`
 	Email     string                `json:"email"`
 	FullName  string                `json:"full_name"`
+	AvatarURL string                `json:"avatar_url"`
 	Role      userdomain.UserRole   `json:"role"`
 	Status    userdomain.UserStatus `json:"status"`
 	CreatedAt time.Time             `json:"created_at"`
@@ -76,6 +77,7 @@ func (h *UpdateProfileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			ID:        user.ID(),
 			Email:     user.Email(),
 			FullName:  user.FullName(),
+			AvatarURL: user.AvatarURL(),
 			Role:      user.Role(),
 			Status:    user.Status(),
 			CreatedAt: user.CreatedAt(),

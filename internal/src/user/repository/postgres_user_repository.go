@@ -141,6 +141,43 @@ func (r *PostgresUserRepo) UpdateFullName(ctx context.Context, id uuid.UUID, ful
 	return domain.ReconstitueUser(dbID, email, dbFullName, avatarURL, role, status, emailVerifiedAt, createdAt, dbUpdatedAt), nil
 }
 
+// UpdateAvatarURL sets avatar_url for the given active user and returns the
+// fully reconstituted user with refreshed timestamps.
+func (r *PostgresUserRepo) UpdateAvatarURL(ctx context.Context, id uuid.UUID, avatarURL string, updatedAt time.Time) (*domain.User, error) {
+	query := `
+		UPDATE users
+		SET    avatar_url = $2,
+		       updated_at = $3
+		WHERE  id     = $1
+		  AND  status = 'active'
+		RETURNING id, email, full_name, COALESCE(avatar_url, ''),
+		          role, status, email_verified_at, created_at, updated_at
+	`
+	var (
+		dbID            uuid.UUID
+		email           string
+		fullName        string
+		dbAvatarURL     string
+		role            domain.UserRole
+		status          domain.UserStatus
+		emailVerifiedAt *time.Time
+		createdAt       time.Time
+		dbUpdatedAt     time.Time
+	)
+	err := r.db.QueryRow(ctx, query, id, avatarURL, updatedAt).Scan(
+		&dbID, &email, &fullName, &dbAvatarURL,
+		&role, &status, &emailVerifiedAt,
+		&createdAt, &dbUpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, fmt.Errorf("update avatar url: %w", err)
+	}
+	return domain.ReconstitueUser(dbID, email, fullName, dbAvatarURL, role, status, emailVerifiedAt, createdAt, dbUpdatedAt), nil
+}
+
 // GetByEmail fetches a single user by email address.
 // The email comparison is case-insensitive because the column is typed as CITEXT.
 // Returns ErrUserNotFound if no row matches.

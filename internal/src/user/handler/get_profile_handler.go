@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
+	"saythis-backend/internal/helper"
 	"saythis-backend/internal/src/auth"
 	"saythis-backend/internal/src/user/usecase"
-	"saythis-backend/internal/helper"
 )
 
 // GetProfileHandler handles GET /api/v1/users/me.
@@ -43,6 +43,7 @@ func (h *GetProfileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ID:        user.ID(),
 			Email:     user.Email(),
 			FullName:  user.FullName(),
+			AvatarURL: user.AvatarURL(),
 			Role:      user.Role(),
 			Status:    user.Status(),
 			CreatedAt: user.CreatedAt(),

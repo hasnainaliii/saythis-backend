@@ -17,6 +17,7 @@ type Config struct {
 	RefreshTokenTTL time.Duration
 	ResendAPIKey    string
 	FrontendURL     string
+	CloudinaryURL   string
 }
 
 func LoadConfig() (*Config, error) {
@@ -31,6 +32,7 @@ func LoadConfig() (*Config, error) {
 		RefreshTokenTTL: 7 * 24 * time.Hour,
 		ResendAPIKey:    os.Getenv("RESEND_API_KEY"),
 		FrontendURL:     os.Getenv("FRONTEND_URL"),
+		CloudinaryURL:   os.Getenv("CLOUDINARY_URL"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -41,6 +43,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.ResendAPIKey == "" {
 		return nil, errors.New("RESEND_API_KEY environment variable is required")
+	}
+	if cfg.CloudinaryURL == "" {
+		return nil, errors.New("CLOUDINARY_URL environment variable is required")
 	}
 
 	if cfg.Port == "" {

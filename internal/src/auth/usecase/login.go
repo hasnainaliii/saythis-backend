@@ -111,17 +111,23 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password string) (*user
 
 	// ── 6. Password verification ──────────────────────────────────────────────
 	if err = bcrypt.CompareHashAndPassword([]byte(creds.PasswordHash()), []byte(password)); err != nil {
-		// bcrypt returns bcrypt.ErrMismatchedHashAndPassword on a bad password;
-		// any other error is a system fault. Either way, return the generic sentinel.
+		// Record the failed attempt (increments counter; locks after 3 failures).
+		// Best-effort: a tracking failure must not prevent the sentinel from being returned.
+		if recErr := uc.authRepo.RecordFailedAttempt(ctx, user.ID()); recErr != nil {
+			slog.Warn("login: failed to record failed attempt",
+				"user_id", user.ID(),
+				"error", recErr,
+			)
+		}
 		return nil, authdomain.TokenPair{}, authdomain.ErrInvalidCredentials
 	}
 
-	// ── 7. Record the successful login (best-effort) ──────────────────────────
+	// ── 7. Record successful login + reset failure counters (best-effort) ──────
+	// UpdateLastLogin atomically sets last_login, clears failed_attempts to 0,
+	// and lifts any locked_until. A failure here must not block the user.
 	now := time.Now().UTC()
 	if err = uc.authRepo.UpdateLastLogin(ctx, user.ID(), now); err != nil {
-		// Non-fatal: a failure here must not block the user from logging in.
-		// Log a warning so the issue surfaces in dashboards without impacting UX.
-		slog.Warn("login: failed to update last_login",
+		slog.Warn("login: failed to record successful login",
 			"user_id", user.ID(),
 			"error", err,
 		)

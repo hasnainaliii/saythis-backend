@@ -53,10 +53,12 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	// User (protected)
 	// *******************
 
-	userUseCase := userusecase.NewUserUseCase(userRepo, authRepo)
+	cloudinaryUploader := userusecase.MustNewCloudinaryUploader(cfg.CloudinaryURL)
+	userUseCase := userusecase.NewUserUseCase(userRepo, authRepo, cloudinaryUploader)
 	getProfileHandler := userhandler.NewGetProfileHandler(userUseCase)
 	deleteAccountHandler := userhandler.NewDeleteAccountHandler(userUseCase)
 	updateProfileHandler := userhandler.NewUpdateProfileHandler(userUseCase)
+	updateAvatarHandler := userhandler.NewUpdateAvatarHandler(userUseCase)
 
 	// *******************
 	// Routes
@@ -75,6 +77,7 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	// Protected user routes
 	mux.Handle("GET /api/v1/users/me", bearerAuth(getProfileHandler))
 	mux.Handle("PATCH /api/v1/users/me", bearerAuth(updateProfileHandler))
+	mux.Handle("PATCH /api/v1/users/me/avatar", bearerAuth(updateAvatarHandler))
 	mux.Handle("DELETE /api/v1/users/me", bearerAuth(deleteAccountHandler))
 
 	// *******************

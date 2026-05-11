@@ -126,8 +126,10 @@ func (r *PostgresAuthRepo) FindCredentialsByUserID(ctx context.Context, userID u
 func (r *PostgresAuthRepo) UpdateLastLogin(ctx context.Context, userID uuid.UUID, lastLogin time.Time) error {
 	query := `
 		UPDATE auth_credentials
-		SET last_login = $1,
-		    updated_at = NOW()
+		SET last_login      = $1,
+		    failed_attempts = 0,
+		    locked_until    = NULL,
+		    updated_at      = NOW()
 		WHERE user_id = $2
 	`
 	_, err := r.db.Exec(ctx, query, lastLogin, userID)
@@ -314,6 +316,28 @@ func (r *PostgresAuthRepo) DeletePasswordResetToken(ctx context.Context, tokenHa
 	_, err := r.db.Exec(ctx, query, tokenHash)
 	if err != nil {
 		return fmt.Errorf("delete password reset token: %w", err)
+	}
+	return nil
+}
+
+// RecordFailedAttempt increments failed_attempts by 1.
+// When the running total reaches 3 the account is locked for 24 hours
+// by setting locked_until atomically in the same UPDATE statement.
+func (r *PostgresAuthRepo) RecordFailedAttempt(ctx context.Context, userID uuid.UUID) error {
+	query := `
+		UPDATE auth_credentials
+		SET failed_attempts = failed_attempts + 1,
+		    locked_until    = CASE
+		                          WHEN failed_attempts + 1 >= 3
+		                          THEN NOW() + INTERVAL '24 hours'
+		                          ELSE locked_until
+		                      END,
+		    updated_at      = NOW()
+		WHERE user_id = $1
+	`
+	_, err := r.db.Exec(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("record failed attempt: %w", err)
 	}
 	return nil
 }
