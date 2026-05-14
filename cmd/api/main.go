@@ -45,7 +45,7 @@ func main() {
 	// Database intilization
 	// *******************
 
-	pool, err := database.Connect(cfg.DatabaseURL)
+	pool, err := database.ConnectWithRetry(cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("❌ Failed to connect to database", "error", err)
 		os.Exit(1)

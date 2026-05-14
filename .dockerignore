@@ -1,0 +1,35 @@
+# ── Version control ────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── Build artefacts ────────────────────────────────────────────────────────
+tmp/
+bin/
+
+# ── Development tooling ────────────────────────────────────────────────────
+.air.toml
+scripts/
+
+# ── Secrets & local config (NEVER bake into an image) ──────────────────────
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# ── Documentation ──────────────────────────────────────────────────────────
+docs/
+*.md
+README*
+LICENCE*
+LICENSE*
+
+# ── Tests ──────────────────────────────────────────────────────────────────
+testdata/
+*_test.go
+
+# ── IDE / editor ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo

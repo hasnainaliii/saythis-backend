@@ -28,7 +28,7 @@ var (
 	// ErrAccountLocked is returned when too many consecutive failed login attempts
 	// have triggered a temporary lockout. The client should display the lock
 	// expiry time so the user knows when to retry.
-	ErrAccountLocked = errors.New("account is temporarily locked — too many failed attempts")
+	ErrAccountLocked = errors.New("account is temporarily locked, too many failed attempts")
 
 	// ErrCredentialsNotFound is a repository-level sentinel returned when no
 	// auth_credentials row exists for a given user_id. Should not normally be
