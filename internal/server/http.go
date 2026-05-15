@@ -7,6 +7,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"saythis-backend/internal/config"
+	"saythis-backend/internal/health"
 	"saythis-backend/internal/middleware"
 	"saythis-backend/internal/src/auth"
 	authhandler "saythis-backend/internal/src/auth/handler"
@@ -20,6 +21,7 @@ import (
 )
 
 func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
+	startTime := time.Now()
 
 	// *******************
 	// Shared infra
@@ -61,24 +63,24 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	updateAvatarHandler := userhandler.NewUpdateAvatarHandler(userUseCase)
 
 	// *******************
-	// Routes
+	// API routes (rate-limited)
 	// *******************
 
-	mux := http.NewServeMux()
+	apiMux := http.NewServeMux()
 
 	// Public auth routes
-	mux.Handle("POST /api/v1/auth/register", registerHandler)
-	mux.Handle("POST /api/v1/auth/login", loginHandler)
-	mux.Handle("POST /api/v1/auth/refresh", refreshHandler)
-	mux.Handle("POST /api/v1/auth/verify-email", verifyEmailHandler)
-	mux.Handle("POST /api/v1/auth/forgot-password", forgotPasswordHandler)
-	mux.Handle("POST /api/v1/auth/reset-password", resetPasswordHandler)
+	apiMux.Handle("POST /api/v1/auth/register", registerHandler)
+	apiMux.Handle("POST /api/v1/auth/login", loginHandler)
+	apiMux.Handle("POST /api/v1/auth/refresh", refreshHandler)
+	apiMux.Handle("POST /api/v1/auth/verify-email", verifyEmailHandler)
+	apiMux.Handle("POST /api/v1/auth/forgot-password", forgotPasswordHandler)
+	apiMux.Handle("POST /api/v1/auth/reset-password", resetPasswordHandler)
 
 	// Protected user routes
-	mux.Handle("GET /api/v1/users/me", bearerAuth(getProfileHandler))
-	mux.Handle("PATCH /api/v1/users/me", bearerAuth(updateProfileHandler))
-	mux.Handle("PATCH /api/v1/users/me/avatar", bearerAuth(updateAvatarHandler))
-	mux.Handle("DELETE /api/v1/users/me", bearerAuth(deleteAccountHandler))
+	apiMux.Handle("GET /api/v1/users/me", bearerAuth(getProfileHandler))
+	apiMux.Handle("PATCH /api/v1/users/me", bearerAuth(updateProfileHandler))
+	apiMux.Handle("PATCH /api/v1/users/me/avatar", bearerAuth(updateAvatarHandler))
+	apiMux.Handle("DELETE /api/v1/users/me", bearerAuth(deleteAccountHandler))
 
 	// *******************
 	// Middleware
@@ -92,9 +94,19 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 		AllowedHeaders: []string{"Content-Type", "Authorization", "X-Request-ID"},
 	})
 
-	return middleware.Chain(mux,
+	// *******************
+	// Top-level mux
+	// Health is registered here — outside the rate-limiter — so uptime monitors
+	// (which poll every 30 s) never consume API rate-limit budget.
+	// *******************
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /health", health.NewHandler(db, cfg.AppEnv, startTime))
+	mux.Handle("/", middleware.Chain(apiMux,
 		middleware.RequestID,
 		corsMiddleware,
 		rateLimiter.Limit,
-	)
+	))
+
+	return mux
 }

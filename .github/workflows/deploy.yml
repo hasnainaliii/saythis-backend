@@ -1,0 +1,59 @@
+name: Test and Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+
+  # ── Run tests before any deploy ────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Run tests
+        run: go test ./...
+
+  # ── Deploy to Oracle server (only after tests pass) ────────────────────────
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Deploy to production
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+            set -e
+
+            cd /home/ubuntu/saythis-backend
+
+            echo "── Pulling latest code ──"
+            git pull origin main
+
+            echo "── Running migrations ──"
+            docker compose run --rm migrate
+
+            echo "── Building app image ──"
+            docker compose build app
+
+            echo "── Restarting app ──"
+            docker compose up -d --force-recreate app
+
+            echo "── Deploy complete ──"
+            docker compose ps
