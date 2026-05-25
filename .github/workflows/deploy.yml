@@ -5,7 +5,6 @@ on:
     branches: [main]
 
 jobs:
-
   # ── Run tests before any deploy ────────────────────────────────────────────
   test:
     name: Test
@@ -47,13 +46,13 @@ jobs:
             git pull origin main
 
             echo "── Running migrations ──"
-            docker compose run --rm migrate
+            sudo docker compose run --rm migrate
 
             echo "── Building app image ──"
-            docker compose build app
+            sudo docker compose build app
 
             echo "── Restarting app ──"
-            docker compose up -d --force-recreate app
+            sudo docker compose up -d --force-recreate app
 
             echo "── Deploy complete ──"
-            docker compose ps
+            sudo docker compose ps
