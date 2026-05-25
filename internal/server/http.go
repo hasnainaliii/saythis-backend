@@ -13,6 +13,9 @@ import (
 	authhandler "saythis-backend/internal/src/auth/handler"
 	authrepo "saythis-backend/internal/src/auth/repository"
 	authusecase "saythis-backend/internal/src/auth/usecase"
+	therapyhandler "saythis-backend/internal/src/therapy/handler"
+	therapyrepo "saythis-backend/internal/src/therapy/repository"
+	therapyusecase "saythis-backend/internal/src/therapy/usecase"
 	userhandler "saythis-backend/internal/src/user/handler"
 	userrepo "saythis-backend/internal/src/user/repository"
 	userusecase "saythis-backend/internal/src/user/usecase"
@@ -63,6 +66,15 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	updateAvatarHandler := userhandler.NewUpdateAvatarHandler(userUseCase)
 
 	// *******************
+	// Therapy progress
+	// *******************
+
+	therapyRepo := therapyrepo.NewPostgresTherapyRepo(db)
+	therapyUseCase := therapyusecase.NewTherapyUseCase(therapyRepo)
+	completeExerciseHandler := therapyhandler.NewCompleteExerciseHandler(therapyUseCase)
+	getProgressHandler := therapyhandler.NewGetProgressHandler(therapyUseCase)
+
+	// *******************
 	// API routes (rate-limited)
 	// *******************
 
@@ -81,6 +93,10 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	apiMux.Handle("PATCH /api/v1/users/me", bearerAuth(updateProfileHandler))
 	apiMux.Handle("PATCH /api/v1/users/me/avatar", bearerAuth(updateAvatarHandler))
 	apiMux.Handle("DELETE /api/v1/users/me", bearerAuth(deleteAccountHandler))
+
+	// Protected therapy routes
+	apiMux.Handle("POST /api/v1/therapy/progress", bearerAuth(completeExerciseHandler))
+	apiMux.Handle("GET /api/v1/therapy/progress", bearerAuth(getProgressHandler))
 
 	// *******************
 	// Middleware
