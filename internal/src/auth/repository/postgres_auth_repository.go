@@ -251,6 +251,44 @@ func (r *PostgresAuthRepo) DeleteEmailVerificationToken(ctx context.Context, tok
 	return nil
 }
 
+// FindLatestEmailVerificationTokenByUserID returns the most recently issued
+// verification token for the given user so the caller can enforce rate limits.
+func (r *PostgresAuthRepo) FindLatestEmailVerificationTokenByUserID(ctx context.Context, userID uuid.UUID) (*authdomain.EmailVerificationToken, error) {
+	query := `
+		SELECT id, user_id, token_hash, expires_at, created_at
+		FROM   email_verification_tokens
+		WHERE  user_id = $1
+		ORDER  BY created_at DESC
+		LIMIT  1
+	`
+	var (
+		id        uuid.UUID
+		userDBID  uuid.UUID
+		hash      string
+		expiresAt time.Time
+		createdAt time.Time
+	)
+	err := r.db.QueryRow(ctx, query, userID).Scan(&id, &userDBID, &hash, &expiresAt, &createdAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, authdomain.ErrTokenNotFound
+		}
+		return nil, fmt.Errorf("find latest email verification token: %w", err)
+	}
+	return authdomain.ReconstitueEmailVerificationToken(id, userDBID, hash, expiresAt, createdAt), nil
+}
+
+// DeleteEmailVerificationTokensByUserID removes every pending verification token
+// for the given user. Called before issuing a fresh token to keep the table tidy.
+func (r *PostgresAuthRepo) DeleteEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error {
+	query := `DELETE FROM email_verification_tokens WHERE user_id = $1`
+	_, err := r.db.Exec(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("delete email verification tokens by user_id: %w", err)
+	}
+	return nil
+}
+
 // MarkEmailVerified stamps email_verified_at on the users table for the given user.
 func (r *PostgresAuthRepo) MarkEmailVerified(ctx context.Context, userID uuid.UUID, verifiedAt time.Time) error {
 	query := `

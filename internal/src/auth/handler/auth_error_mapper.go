@@ -47,6 +47,14 @@ func mapAuthError(err error) (int, string) {
 	case errors.Is(err, authdomain.ErrEmailAlreadyVerified):
 		return http.StatusConflict, authdomain.ErrEmailAlreadyVerified.Error()
 
+	// ── 429 Too Many Requests ────────────────────────────────────────────
+	case errors.Is(err, authdomain.ErrResendTooSoon):
+		return http.StatusTooManyRequests, authdomain.ErrResendTooSoon.Error()
+
+	// ── 404 Not Found ─────────────────────────────────────────────────
+	case errors.Is(err, userdomain.ErrUserNotFound):
+		return http.StatusNotFound, userdomain.ErrUserNotFound.Error()
+
 	// ── 500 Internal Server Error ─────────────────────────────────────────────
 	default:
 		return http.StatusInternalServerError, "internal server error"

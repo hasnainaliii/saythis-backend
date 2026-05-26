@@ -48,6 +48,15 @@ type AuthRepository interface {
 	// DeleteEmailVerificationToken removes a verification token after use or expiry.
 	DeleteEmailVerificationToken(ctx context.Context, tokenHash string) error
 
+	// FindLatestEmailVerificationTokenByUserID returns the most recently created
+	// verification token for a user. Used to enforce the once-per-24h resend limit.
+	// Returns ErrTokenNotFound if the user has no pending tokens.
+	FindLatestEmailVerificationTokenByUserID(ctx context.Context, userID uuid.UUID) (*authdomain.EmailVerificationToken, error)
+
+	// DeleteEmailVerificationTokensByUserID removes all pending verification tokens
+	// for a user. Called before issuing a fresh token so stale ones do not linger.
+	DeleteEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error
+
 	// MarkEmailVerified stamps email_verified_at on the users row.
 	MarkEmailVerified(ctx context.Context, userID uuid.UUID, verifiedAt time.Time) error
 

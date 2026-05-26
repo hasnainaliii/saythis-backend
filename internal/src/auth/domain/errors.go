@@ -15,6 +15,7 @@ var (
 
 	// ── Email verification errors ────────────────────────────────────────────
 	ErrEmailAlreadyVerified = errors.New("email address is already verified")
+	ErrResendTooSoon        = errors.New("you can only request a new verification email once every 24 hours")
 
 	// ── Login / credential errors ────────────────────────────────────────────
 	// ErrInvalidCredentials is intentionally generic — returned for both

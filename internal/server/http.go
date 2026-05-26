@@ -53,6 +53,7 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	verifyEmailHandler := authhandler.NewVerifyEmailHandler(authUseCase)
 	forgotPasswordHandler := authhandler.NewForgotPasswordHandler(authUseCase)
 	resetPasswordHandler := authhandler.NewResetPasswordHandler(authUseCase)
+	resendVerificationHandler := authhandler.NewResendVerificationHandler(authUseCase, jwtCfg)
 
 	// *******************
 	// User (protected)
@@ -87,6 +88,9 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	apiMux.Handle("POST /api/v1/auth/verify-email", verifyEmailHandler)
 	apiMux.Handle("POST /api/v1/auth/forgot-password", forgotPasswordHandler)
 	apiMux.Handle("POST /api/v1/auth/reset-password", resetPasswordHandler)
+
+	// Protected auth routes
+	apiMux.Handle("POST /api/v1/auth/resend-verification", bearerAuth(resendVerificationHandler))
 
 	// Protected user routes
 	apiMux.Handle("GET /api/v1/users/me", bearerAuth(getProfileHandler))
