@@ -13,6 +13,9 @@ import (
 	authhandler "saythis-backend/internal/src/auth/handler"
 	authrepo "saythis-backend/internal/src/auth/repository"
 	authusecase "saythis-backend/internal/src/auth/usecase"
+	statshandler "saythis-backend/internal/src/stats/handler"
+	statsrepo "saythis-backend/internal/src/stats/repository"
+	statsusecase "saythis-backend/internal/src/stats/usecase"
 	therapyhandler "saythis-backend/internal/src/therapy/handler"
 	therapyrepo "saythis-backend/internal/src/therapy/repository"
 	therapyusecase "saythis-backend/internal/src/therapy/usecase"
@@ -76,6 +79,16 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	getProgressHandler := therapyhandler.NewGetProgressHandler(therapyUseCase)
 
 	// *******************
+	// Stats
+	// *******************
+
+	statsRepo := statsrepo.NewPostgresStatsRepo(db)
+	statsUseCase := statsusecase.NewStatsUseCase(statsRepo)
+	updateDailyStatsHandler := statshandler.NewUpdateDailyHandler(statsUseCase)
+	getStatsHandler := statshandler.NewGetStatsHandler(statsUseCase)
+	getDailyStatsHandler := statshandler.NewGetDailyHandler(statsUseCase)
+
+	// *******************
 	// API routes (rate-limited)
 	// *******************
 
@@ -101,6 +114,11 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 	// Protected therapy routes
 	apiMux.Handle("POST /api/v1/therapy/progress", bearerAuth(completeExerciseHandler))
 	apiMux.Handle("GET /api/v1/therapy/progress", bearerAuth(getProgressHandler))
+
+	// Protected stats routes
+	apiMux.Handle("GET /api/v1/stats", bearerAuth(getStatsHandler))
+	apiMux.Handle("PATCH /api/v1/stats/daily", bearerAuth(updateDailyStatsHandler))
+	apiMux.Handle("GET /api/v1/stats/daily/{date}", bearerAuth(getDailyStatsHandler))
 
 	// *******************
 	// Middleware
