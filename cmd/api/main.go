@@ -15,9 +15,9 @@ import (
 
 func main() {
 
-	// *******************
+	// ********************
 	// Env intilization
-	// *******************
+	// ********************
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
