@@ -9,9 +9,6 @@ import (
 	"saythis-backend/internal/src/therapy/usecase"
 )
 
-// GetProgressHandler handles GET /api/v1/therapy/progress.
-// Returns all completed exercises for the authenticated user along with a
-// running total, which the client uses to derive exercise unlock state.
 type GetProgressHandler struct {
 	usecase *usecase.TherapyUseCase
 }

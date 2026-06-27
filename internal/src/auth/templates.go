@@ -2,7 +2,6 @@ package auth
 
 import "fmt"
 
-// buildVerificationHTML returns an HTML email body for email verification.
 func buildVerificationHTML(verificationURL string) string {
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -62,7 +61,6 @@ func buildVerificationHTML(verificationURL string) string {
 </html>`, verificationURL, verificationURL, verificationURL)
 }
 
-// buildPasswordResetHTML returns an HTML email body for password reset.
 func buildPasswordResetHTML(resetURL string) string {
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">

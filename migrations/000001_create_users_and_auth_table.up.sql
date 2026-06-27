@@ -7,7 +7,7 @@ CREATE TABLE users (
     full_name VARCHAR(255) NOT NULL,
     avatar_url TEXT DEFAULT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'user',
-    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
     email_verified_at TIMESTAMPTZ,
 
 

@@ -3,12 +3,10 @@ package handler
 import (
 	"net/http"
 
-	"saythis-backend/internal/src/auth/usecase"
 	"saythis-backend/internal/helper"
+	"saythis-backend/internal/src/auth/usecase"
 )
 
-// ResetPasswordHandler handles POST /api/v1/auth/reset-password.
-// Validates the one-time token, enforces password rules, and updates the credential.
 type ResetPasswordHandler struct {
 	usecase *usecase.AuthUseCase
 }

@@ -3,6 +3,7 @@ package domain
 type UserStatus string
 
 const (
+	StatusPending   UserStatus = "pending"
 	StatusActive    UserStatus = "active"
 	StatusSuspended UserStatus = "suspended"
 	StatusDeleted   UserStatus = "deleted"
@@ -10,7 +11,7 @@ const (
 
 func (s UserStatus) IsValid() bool {
 	switch s {
-	case StatusActive, StatusSuspended, StatusDeleted:
+	case StatusPending, StatusActive, StatusSuspended, StatusDeleted:
 		return true
 	default:
 		return false

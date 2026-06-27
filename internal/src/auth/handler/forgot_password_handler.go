@@ -3,13 +3,10 @@ package handler
 import (
 	"net/http"
 
-	"saythis-backend/internal/src/auth/usecase"
 	"saythis-backend/internal/helper"
+	"saythis-backend/internal/src/auth/usecase"
 )
 
-// ForgotPasswordHandler handles POST /api/v1/auth/forgot-password.
-// Always responds with 200 OK regardless of whether the email exists —
-// this prevents user enumeration.
 type ForgotPasswordHandler struct {
 	usecase *usecase.AuthUseCase
 }
@@ -33,7 +30,6 @@ func (h *ForgotPasswordHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// ForgotPassword always returns nil — any internal error is logged, not surfaced.
 	_ = h.usecase.ForgotPassword(r.Context(), req.Email)
 
 	helper.JSON(w, http.StatusOK, map[string]string{

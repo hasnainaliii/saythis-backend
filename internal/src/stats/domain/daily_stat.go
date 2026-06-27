@@ -6,15 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// Optional distinguishes between an omitted field and an explicit null/value.
-// It is used by PATCH /stats/daily so partial updates never erase fields unless
-// the client intentionally sends null for that field.
 type Optional[T any] struct {
 	Present bool
 	Value   *T
 }
 
-// DailyStatPatch contains the validated partial update for one user/day.
 type DailyStatPatch struct {
 	Date              time.Time
 	Mood              Optional[string]
@@ -30,7 +26,6 @@ type DailyStatPatch struct {
 	StutterTranscript Optional[string]
 }
 
-// DailyStat is the unified per-user, per-day wellness and stutter-analysis row.
 type DailyStat struct {
 	ID                uuid.UUID
 	UserID            uuid.UUID

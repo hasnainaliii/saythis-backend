@@ -1,7 +1,6 @@
 name: saythis
 
 services:
-  # ── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -25,7 +24,6 @@ services:
     networks:
       - backend
 
-  # ── Migrations (one-shot; exits 0 on success) ──────────────────────────────
   migrate:
     image: migrate/migrate:v4.18.1
     restart: "no"
@@ -41,7 +39,6 @@ services:
     networks:
       - backend
 
-  # ── Application ────────────────────────────────────────────────────────────
   app:
     build:
       context: .
@@ -66,7 +63,6 @@ services:
     networks:
       - backend
 
-  # ── Nginx (public entry point — proxies to app) ────────────────────────────
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
@@ -83,8 +79,6 @@ services:
     networks:
       - backend
 
-  # ── Certbot (run manually for cert acquisition and renewal) ────────────────
-  # Usage: docker compose --profile certbot run --rm certbot <args>
   certbot:
     image: certbot/certbot:latest
     volumes:

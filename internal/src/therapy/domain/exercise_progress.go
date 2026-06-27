@@ -6,9 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ExerciseProgress records that a user has completed a specific exercise within
-// a therapy chapter. It maps 1-to-1 with the exercise_progress table.
-// A record only ever exists when the exercise is completed — completed is always true.
 type ExerciseProgress struct {
 	id          uuid.UUID
 	userID      uuid.UUID
@@ -20,9 +17,6 @@ type ExerciseProgress struct {
 	completedAt time.Time
 }
 
-// NewExerciseProgress constructs a fresh ExerciseProgress for a first-time or
-// re-submission. completed is always set to true — a record only exists here
-// because the exercise was finished.
 func NewExerciseProgress(
 	userID uuid.UUID,
 	chapterID, exerciseID string,
@@ -42,9 +36,6 @@ func NewExerciseProgress(
 	}
 }
 
-// ReconstitueExerciseProgress rebuilds an ExerciseProgress from a database row.
-// All persisted fields are accepted directly — no re-validation because data
-// coming from the DB is already trusted.
 func ReconstitueExerciseProgress(
 	id, userID uuid.UUID,
 	chapterID, exerciseID string,
@@ -64,8 +55,6 @@ func ReconstitueExerciseProgress(
 		completedAt: completedAt,
 	}
 }
-
-// ── Getters ───────────────────────────────────────────────────────────────────
 
 func (e *ExerciseProgress) ID() uuid.UUID          { return e.id }
 func (e *ExerciseProgress) UserID() uuid.UUID      { return e.userID }

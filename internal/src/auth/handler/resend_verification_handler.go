@@ -8,9 +8,6 @@ import (
 	"saythis-backend/internal/src/auth/usecase"
 )
 
-// ResendVerificationHandler handles POST /api/v1/auth/resend-verification.
-// Requires a valid JWT (protected route) — the user ID is read from the token
-// claims so no request body is needed.
 type ResendVerificationHandler struct {
 	usecase *usecase.AuthUseCase
 	jwtCfg  auth.JWTConfig

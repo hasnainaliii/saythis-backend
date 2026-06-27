@@ -58,7 +58,6 @@ func (r *PostgresAuthRepo) Register(ctx context.Context, user *userdomain.User, 
 	user.SetCreatedAt(createdAt)
 	user.SetUpdatedAt(updatedAt)
 
-	// ── 2. Insert credentials ────────────────────────────────────────────────
 	credsQuery := `
 		INSERT INTO auth_credentials (id, user_id, password_hash, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
@@ -71,7 +70,6 @@ func (r *PostgresAuthRepo) Register(ctx context.Context, user *userdomain.User, 
 		return fmt.Errorf("insert credentials: %w", err)
 	}
 
-	// ── 3. Commit ────────────────────────────────────────────────────────────
 	if err = tx.Commit(ctx); err != nil {
 		slog.Error("failed to commit transaction", "error", err)
 		return fmt.Errorf("commit transaction: %w", err)
@@ -81,9 +79,6 @@ func (r *PostgresAuthRepo) Register(ctx context.Context, user *userdomain.User, 
 	return nil
 }
 
-// FindCredentialsByUserID returns the auth_credentials row for the given user ID.
-// Every column — including nullable ones — is scanned out and used to reconstitute
-// the AuthCredentials domain object. Returns ErrCredentialsNotFound if no row exists.
 func (r *PostgresAuthRepo) FindCredentialsByUserID(ctx context.Context, userID uuid.UUID) (*authdomain.AuthCredentials, error) {
 	query := `
 		SELECT id, user_id, password_hash,
@@ -120,9 +115,6 @@ func (r *PostgresAuthRepo) FindCredentialsByUserID(ctx context.Context, userID u
 	), nil
 }
 
-// UpdateLastLogin sets last_login to the provided timestamp on the credentials
-// row that belongs to the given user. Called after every successful login so
-// administrators have an audit trail of account activity.
 func (r *PostgresAuthRepo) UpdateLastLogin(ctx context.Context, userID uuid.UUID, lastLogin time.Time) error {
 	query := `
 		UPDATE auth_credentials
@@ -139,7 +131,6 @@ func (r *PostgresAuthRepo) UpdateLastLogin(ctx context.Context, userID uuid.UUID
 	return nil
 }
 
-// SaveRefreshToken inserts a new refresh token record.
 func (r *PostgresAuthRepo) SaveRefreshToken(ctx context.Context, token *authdomain.RefreshToken) error {
 	query := `
 		INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at)
@@ -154,7 +145,6 @@ func (r *PostgresAuthRepo) SaveRefreshToken(ctx context.Context, token *authdoma
 	return nil
 }
 
-// FindRefreshToken looks up a refresh token by its SHA-256 hash.
 func (r *PostgresAuthRepo) FindRefreshToken(ctx context.Context, tokenHash string) (*authdomain.RefreshToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, expires_at, created_at
@@ -178,7 +168,6 @@ func (r *PostgresAuthRepo) FindRefreshToken(ctx context.Context, tokenHash strin
 	return authdomain.ReconstitueRefreshToken(id, userID, hash, expiresAt, createdAt), nil
 }
 
-// DeleteRefreshToken removes a refresh token by its SHA-256 hash.
 func (r *PostgresAuthRepo) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
 	query := `DELETE FROM refresh_tokens WHERE token_hash = $1`
 	_, err := r.db.Exec(ctx, query, tokenHash)
@@ -188,9 +177,6 @@ func (r *PostgresAuthRepo) DeleteRefreshToken(ctx context.Context, tokenHash str
 	return nil
 }
 
-// DeleteAllRefreshTokensByUserID removes every refresh token that belongs to the
-// given user. Used during account deletion to immediately invalidate all active
-// sessions so that outstanding tokens cannot be replayed.
 func (r *PostgresAuthRepo) DeleteAllRefreshTokensByUserID(ctx context.Context, userID uuid.UUID) error {
 	query := `DELETE FROM refresh_tokens WHERE user_id = $1`
 	_, err := r.db.Exec(ctx, query, userID)
@@ -200,9 +186,6 @@ func (r *PostgresAuthRepo) DeleteAllRefreshTokensByUserID(ctx context.Context, u
 	return nil
 }
 
-// ── Email Verification ────────────────────────────────────────────────────────
-
-// SaveEmailVerificationToken inserts a new email verification token record.
 func (r *PostgresAuthRepo) SaveEmailVerificationToken(ctx context.Context, token *authdomain.EmailVerificationToken) error {
 	query := `
 		INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at, created_at)
@@ -217,7 +200,6 @@ func (r *PostgresAuthRepo) SaveEmailVerificationToken(ctx context.Context, token
 	return nil
 }
 
-// FindEmailVerificationToken looks up an email verification token by its SHA-256 hash.
 func (r *PostgresAuthRepo) FindEmailVerificationToken(ctx context.Context, tokenHash string) (*authdomain.EmailVerificationToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, expires_at, created_at
@@ -241,7 +223,6 @@ func (r *PostgresAuthRepo) FindEmailVerificationToken(ctx context.Context, token
 	return authdomain.ReconstitueEmailVerificationToken(id, userID, hash, expiresAt, createdAt), nil
 }
 
-// DeleteEmailVerificationToken removes an email verification token by its hash.
 func (r *PostgresAuthRepo) DeleteEmailVerificationToken(ctx context.Context, tokenHash string) error {
 	query := `DELETE FROM email_verification_tokens WHERE token_hash = $1`
 	_, err := r.db.Exec(ctx, query, tokenHash)
@@ -251,8 +232,6 @@ func (r *PostgresAuthRepo) DeleteEmailVerificationToken(ctx context.Context, tok
 	return nil
 }
 
-// FindLatestEmailVerificationTokenByUserID returns the most recently issued
-// verification token for the given user so the caller can enforce rate limits.
 func (r *PostgresAuthRepo) FindLatestEmailVerificationTokenByUserID(ctx context.Context, userID uuid.UUID) (*authdomain.EmailVerificationToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, expires_at, created_at
@@ -278,8 +257,6 @@ func (r *PostgresAuthRepo) FindLatestEmailVerificationTokenByUserID(ctx context.
 	return authdomain.ReconstitueEmailVerificationToken(id, userDBID, hash, expiresAt, createdAt), nil
 }
 
-// DeleteEmailVerificationTokensByUserID removes every pending verification token
-// for the given user. Called before issuing a fresh token to keep the table tidy.
 func (r *PostgresAuthRepo) DeleteEmailVerificationTokensByUserID(ctx context.Context, userID uuid.UUID) error {
 	query := `DELETE FROM email_verification_tokens WHERE user_id = $1`
 	_, err := r.db.Exec(ctx, query, userID)
@@ -289,11 +266,11 @@ func (r *PostgresAuthRepo) DeleteEmailVerificationTokensByUserID(ctx context.Con
 	return nil
 }
 
-// MarkEmailVerified stamps email_verified_at on the users table for the given user.
 func (r *PostgresAuthRepo) MarkEmailVerified(ctx context.Context, userID uuid.UUID, verifiedAt time.Time) error {
 	query := `
 		UPDATE users
 		SET email_verified_at = $2,
+		    status            = 'active',
 		    updated_at        = NOW()
 		WHERE id = $1
 	`
@@ -307,9 +284,6 @@ func (r *PostgresAuthRepo) MarkEmailVerified(ctx context.Context, userID uuid.UU
 	return nil
 }
 
-// ── Password Reset ────────────────────────────────────────────────────────────
-
-// SavePasswordResetToken inserts a new password reset token record.
 func (r *PostgresAuthRepo) SavePasswordResetToken(ctx context.Context, token *authdomain.PasswordResetToken) error {
 	query := `
 		INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at)
@@ -324,7 +298,6 @@ func (r *PostgresAuthRepo) SavePasswordResetToken(ctx context.Context, token *au
 	return nil
 }
 
-// FindPasswordResetToken looks up a password reset token by its SHA-256 hash.
 func (r *PostgresAuthRepo) FindPasswordResetToken(ctx context.Context, tokenHash string) (*authdomain.PasswordResetToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, expires_at, created_at
@@ -348,7 +321,6 @@ func (r *PostgresAuthRepo) FindPasswordResetToken(ctx context.Context, tokenHash
 	return authdomain.ReconstituePasswordResetToken(id, userID, hash, expiresAt, createdAt), nil
 }
 
-// DeletePasswordResetToken removes a password reset token by its hash.
 func (r *PostgresAuthRepo) DeletePasswordResetToken(ctx context.Context, tokenHash string) error {
 	query := `DELETE FROM password_reset_tokens WHERE token_hash = $1`
 	_, err := r.db.Exec(ctx, query, tokenHash)
@@ -358,9 +330,6 @@ func (r *PostgresAuthRepo) DeletePasswordResetToken(ctx context.Context, tokenHa
 	return nil
 }
 
-// RecordFailedAttempt increments failed_attempts by 1.
-// When the running total reaches 3 the account is locked for 24 hours
-// by setting locked_until atomically in the same UPDATE statement.
 func (r *PostgresAuthRepo) RecordFailedAttempt(ctx context.Context, userID uuid.UUID) error {
 	query := `
 		UPDATE auth_credentials
@@ -380,7 +349,6 @@ func (r *PostgresAuthRepo) RecordFailedAttempt(ctx context.Context, userID uuid.
 	return nil
 }
 
-// UpdatePassword replaces the bcrypt password hash in auth_credentials for the given user.
 func (r *PostgresAuthRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
 	query := `
 		UPDATE auth_credentials

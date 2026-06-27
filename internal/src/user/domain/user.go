@@ -53,15 +53,12 @@ func NewUser(email string, fullName string, role UserRole, timeNow time.Time) (*
 		email:     email,
 		fullName:  fullName,
 		role:      role,
-		status:    StatusActive,
+		status:    StatusPending,
 		createdAt: timeNow,
 		updatedAt: timeNow,
 	}, nil
 }
 
-// ReconstitueUser rebuilds a User from a database row.
-// Unlike NewUser it accepts an existing ID and pre-validated data,
-// so it skips validation — data coming out of the DB is already trusted.
 func ReconstitueUser(
 	id uuid.UUID,
 	email, fullName, avatarURL string,
@@ -108,9 +105,6 @@ func (u *User) SetUpdatedAt(updatedAt time.Time) { u.updatedAt = updatedAt }
 // Standalone validators
 // *********************
 
-// ValidateFullName checks a candidate full name against the domain rules.
-// Extracted as a package-level function so use-case layers can validate
-// input without constructing a full User object.
 func ValidateFullName(fullName string) error {
 	fullName = strings.TrimSpace(fullName)
 	if fullName == "" {

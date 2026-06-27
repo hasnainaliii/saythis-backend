@@ -14,14 +14,10 @@ import (
 	"time"
 )
 
-// ImageUploader is the interface used by UserUseCase to upload avatar images.
-// Keeping it as an interface makes the uploader swappable in tests.
 type ImageUploader interface {
 	Upload(ctx context.Context, file io.Reader, filename string) (secureURL string, err error)
 }
 
-// CloudinaryUploader uploads images to Cloudinary using the signed upload API.
-// Images are stored in the "saythis" folder inside the configured cloud.
 type CloudinaryUploader struct {
 	cloudName  string
 	apiKey     string
@@ -30,8 +26,6 @@ type CloudinaryUploader struct {
 	httpClient *http.Client
 }
 
-// NewCloudinaryUploader parses the CLOUDINARY_URL and returns a configured uploader.
-// Expected format: cloudinary://api_key:api_secret@cloud_name
 func NewCloudinaryUploader(cloudinaryURL string) (*CloudinaryUploader, error) {
 	u, err := url.Parse(cloudinaryURL)
 	if err != nil {
@@ -54,8 +48,6 @@ func NewCloudinaryUploader(cloudinaryURL string) (*CloudinaryUploader, error) {
 	}, nil
 }
 
-// MustNewCloudinaryUploader is like NewCloudinaryUploader but panics on error.
-// Use at startup where a misconfigured URL is an unrecoverable fault.
 func MustNewCloudinaryUploader(cloudinaryURL string) *CloudinaryUploader {
 	u, err := NewCloudinaryUploader(cloudinaryURL)
 	if err != nil {
@@ -71,18 +63,14 @@ type cloudinaryUploadResponse struct {
 	} `json:"error"`
 }
 
-// Upload sends the file to Cloudinary via the signed upload API and returns its secure URL.
-// Signature algorithm: SHA-1(folder={folder}&timestamp={ts}{api_secret})
 func (c *CloudinaryUploader) Upload(ctx context.Context, file io.Reader, filename string) (string, error) {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 
-	// Parameters must be sorted alphabetically (f before t).
 	toSign := fmt.Sprintf("folder=%s&timestamp=%s%s", c.folder, timestamp, c.apiSecret)
 	h := sha1.New()
 	h.Write([]byte(toSign))
 	signature := fmt.Sprintf("%x", h.Sum(nil))
 
-	// Build the multipart body.
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
 

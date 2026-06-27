@@ -12,11 +12,6 @@ type contextKey string
 
 const claimsContextKey contextKey = "auth_claims"
 
-// BearerAuth validates the JWT in the Authorization header.
-// On success it injects the parsed Claims into the request context.
-// Attach this to any route that requires a logged-in user.
-//
-// Expected header format:  Authorization: Bearer <access_token>
 func BearerAuth(cfg JWTConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,8 +39,6 @@ func BearerAuth(cfg JWTConfig) func(http.Handler) http.Handler {
 	}
 }
 
-// ClaimsFromContext retrieves the validated JWT claims from the request context.
-// Returns nil, false if the request was not authenticated (route not protected).
 func ClaimsFromContext(ctx context.Context) (*Claims, bool) {
 	claims, ok := ctx.Value(claimsContextKey).(*Claims)
 	return claims, ok

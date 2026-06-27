@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"saythis-backend/internal/src/auth/usecase"
 	"saythis-backend/internal/helper"
+	"saythis-backend/internal/src/auth/usecase"
 )
 
 type RefreshHandler struct {

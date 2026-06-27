@@ -134,8 +134,6 @@ func NewRouter(db *pgxpool.Pool, cfg *config.Config) http.Handler {
 
 	// *******************
 	// Top-level mux
-	// Health is registered here — outside the rate-limiter — so uptime monitors
-	// (which poll every 30 s) never consume API rate-limit budget.
 	// *******************
 
 	mux := http.NewServeMux()

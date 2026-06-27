@@ -16,22 +16,11 @@ import (
 
 const resendCooldown = 24 * time.Hour
 
-// ResendVerificationEmail issues a fresh one-time verification link for the
-// given user and delivers it by email.
-//
-// Rules enforced:
-//   - The user's email must not already be verified (ErrEmailAlreadyVerified).
-//   - At most one resend per 24 hours is allowed (ErrResendTooSoon).
-//
-// On success the old token(s) for this user are deleted and a new 24-hour
-// token is stored and emailed.
 func (uc *AuthUseCase) ResendVerificationEmail(ctx context.Context, userID uuid.UUID) error {
 
-	// ── 1. Fetch the user — confirm they exist and are not yet verified ────────
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userdomain.ErrUserNotFound) {
-			// Should never happen for an authenticated caller, but handle gracefully.
 			return userdomain.ErrUserNotFound
 		}
 		return fmt.Errorf("resend_verification: look up user: %w", err)
@@ -41,7 +30,6 @@ func (uc *AuthUseCase) ResendVerificationEmail(ctx context.Context, userID uuid.
 		return authdomain.ErrEmailAlreadyVerified
 	}
 
-	// ── 2. Enforce once-per-24h rate limit ────────────────────────────────────
 	latest, err := uc.authRepo.FindLatestEmailVerificationTokenByUserID(ctx, userID)
 	if err != nil && !errors.Is(err, authdomain.ErrTokenNotFound) {
 		return fmt.Errorf("resend_verification: check rate limit: %w", err)
@@ -51,12 +39,10 @@ func (uc *AuthUseCase) ResendVerificationEmail(ctx context.Context, userID uuid.
 		return authdomain.ErrResendTooSoon
 	}
 
-	// ── 3. Remove any stale tokens before issuing a fresh one ─────────────────
 	if err = uc.authRepo.DeleteEmailVerificationTokensByUserID(ctx, userID); err != nil {
 		return fmt.Errorf("resend_verification: clear old tokens: %w", err)
 	}
 
-	// ── 4. Generate, persist, and send the new token ──────────────────────────
 	plaintext, tokenHash, err := auth.GenerateSecureToken()
 	if err != nil {
 		return fmt.Errorf("resend_verification: generate token: %w", err)
@@ -76,8 +62,6 @@ func (uc *AuthUseCase) ResendVerificationEmail(ctx context.Context, userID uuid.
 			"user_id", userID,
 			"error", err,
 		)
-		// The token is saved; the user can retry again after 24 h.
-		// Do not surface the mail-delivery failure — just log it.
 		return nil
 	}
 

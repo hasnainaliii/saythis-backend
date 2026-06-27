@@ -8,9 +8,6 @@ import (
 	"saythis-backend/internal/src/user/usecase"
 )
 
-// GetProfileHandler handles GET /api/v1/users/me.
-// The route must be protected by BearerAuth middleware — the handler reads the
-// authenticated user's ID directly from the JWT claims in the request context.
 type GetProfileHandler struct {
 	usecase *usecase.UserUseCase
 }
@@ -23,7 +20,6 @@ type getProfileResponse struct {
 	User userPayload `json:"user"`
 }
 
-// ServeHTTP fetches and returns the authenticated user's profile data.
 func (h *GetProfileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.ClaimsFromContext(r.Context())
 	if !ok {
@@ -40,14 +36,15 @@ func (h *GetProfileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	helper.JSON(w, http.StatusOK, getProfileResponse{
 		User: userPayload{
-			ID:        user.ID(),
-			Email:     user.Email(),
-			FullName:  user.FullName(),
-			AvatarURL: user.AvatarURL(),
-			Role:      user.Role(),
-			Status:    user.Status(),
-			CreatedAt: user.CreatedAt(),
-			UpdatedAt: user.UpdatedAt(),
+			ID:              user.ID(),
+			Email:           user.Email(),
+			FullName:        user.FullName(),
+			AvatarURL:       user.AvatarURL(),
+			Role:            user.Role(),
+			Status:          user.Status(),
+			EmailVerifiedAt: user.EmailVerifiedAt(),
+			CreatedAt:       user.CreatedAt(),
+			UpdatedAt:       user.UpdatedAt(),
 		},
 	})
 }

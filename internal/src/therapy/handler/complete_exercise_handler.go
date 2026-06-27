@@ -9,9 +9,6 @@ import (
 	"saythis-backend/internal/src/therapy/usecase"
 )
 
-// CompleteExerciseHandler handles POST /api/v1/therapy/progress.
-// The route must be protected by BearerAuth — the handler reads the user ID
-// from JWT claims and never trusts a user-supplied user_id in the body.
 type CompleteExerciseHandler struct {
 	usecase *usecase.TherapyUseCase
 }
@@ -36,7 +33,7 @@ type completeExerciseResponse struct {
 }
 
 func (h *CompleteExerciseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	const maxBodySize = 1 << 20 // 1 MB
+	const maxBodySize = 1 << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 	defer r.Body.Close()
 

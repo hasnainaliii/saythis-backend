@@ -9,9 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ConnectWithRetry attempts to connect to the database with exponential backoff.
-// Essential in Docker deployments where PostgreSQL may not be ready
-// when the app starts, even with depends_on health checks.
 func ConnectWithRetry(databaseURL string) (*pgxpool.Pool, error) {
 	const maxAttempts = 10
 	const baseDelay = 2 * time.Second
@@ -28,8 +25,6 @@ func ConnectWithRetry(databaseURL string) (*pgxpool.Pool, error) {
 			break
 		}
 
-		// Linear backoff capped at 15 s
-		// Attempt 1→2s, 2→4s, 3→6s … 8+→15s
 		delay := time.Duration(attempt) * baseDelay
 		if delay > 15*time.Second {
 			delay = 15 * time.Second
@@ -47,7 +42,6 @@ func ConnectWithRetry(databaseURL string) (*pgxpool.Pool, error) {
 	return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", maxAttempts, err)
 }
 
-// connect performs a single connection attempt with a pool tuned for a 1 GB RAM server.
 func connect(databaseURL string) (*pgxpool.Pool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

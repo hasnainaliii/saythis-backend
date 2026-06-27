@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"saythis-backend/internal/helper"
 	"saythis-backend/internal/src/auth/usecase"
 	userdomain "saythis-backend/internal/src/user/domain"
-	"saythis-backend/internal/helper"
 )
 
 type RegisterHandler struct {
@@ -32,12 +32,13 @@ type registerResponse struct {
 }
 
 type userPayload struct {
-	ID        uuid.UUID             `json:"id"`
-	Email     string                `json:"email"`
-	FullName  string                `json:"full_name"`
-	Role      userdomain.UserRole   `json:"role"`
-	Status    userdomain.UserStatus `json:"status"`
-	CreatedAt time.Time             `json:"created_at"`
+	ID              uuid.UUID             `json:"id"`
+	Email           string                `json:"email"`
+	FullName        string                `json:"full_name"`
+	Role            userdomain.UserRole   `json:"role"`
+	Status          userdomain.UserStatus `json:"status"`
+	EmailVerifiedAt *time.Time            `json:"email_verified_at"`
+	CreatedAt       time.Time             `json:"created_at"`
 }
 
 func (h *RegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -60,12 +61,13 @@ func (h *RegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	helper.JSON(w, http.StatusCreated, registerResponse{
 		User: userPayload{
-			ID:        user.ID(),
-			Email:     user.Email(),
-			FullName:  user.FullName(),
-			Role:      user.Role(),
-			Status:    user.Status(),
-			CreatedAt: user.CreatedAt(),
+			ID:              user.ID(),
+			Email:           user.Email(),
+			FullName:        user.FullName(),
+			Role:            user.Role(),
+			Status:          user.Status(),
+			EmailVerifiedAt: user.EmailVerifiedAt(),
+			CreatedAt:       user.CreatedAt(),
 		},
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,

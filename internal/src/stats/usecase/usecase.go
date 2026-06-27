@@ -1,4 +1,3 @@
-// Package usecase implements stats orchestration and aggregation.
 package usecase
 
 import statsrepo "saythis-backend/internal/src/stats/repository"

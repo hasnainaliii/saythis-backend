@@ -12,17 +12,12 @@ import (
 
 const resendAPIURL = "https://api.resend.com/emails"
 
-// ResendClient sends transactional emails via the Resend REST API.
-// It satisfies the EmailSender interface.
 type ResendClient struct {
 	apiKey     string
 	from       string
 	httpClient *http.Client
 }
 
-// NewResendClient constructs a ResendClient.
-// apiKey is the Resend API key (from RESEND_API_KEY env var).
-// from is the verified sender address (e.g. "auth@hasn.me").
 func NewResendClient(apiKey, from string) *ResendClient {
 	return &ResendClient{
 		apiKey: apiKey,
@@ -33,7 +28,6 @@ func NewResendClient(apiKey, from string) *ResendClient {
 	}
 }
 
-// resendRequest is the JSON body expected by the Resend API.
 type resendRequest struct {
 	From    string   `json:"from"`
 	To      []string `json:"to"`
@@ -41,7 +35,6 @@ type resendRequest struct {
 	HTML    string   `json:"html"`
 }
 
-// send is the internal dispatcher used by all public methods.
 func (c *ResendClient) send(ctx context.Context, to, subject, html string) error {
 	payload := resendRequest{
 		From:    c.from,
@@ -76,12 +69,10 @@ func (c *ResendClient) send(ctx context.Context, to, subject, html string) error
 	return nil
 }
 
-// SendVerification implements EmailSender.
 func (c *ResendClient) SendVerification(ctx context.Context, to, verificationURL string) error {
 	return c.send(ctx, to, "Verify your email address", buildVerificationHTML(verificationURL))
 }
 
-// SendPasswordReset implements EmailSender.
 func (c *ResendClient) SendPasswordReset(ctx context.Context, to, resetURL string) error {
 	return c.send(ctx, to, "Reset your password", buildPasswordResetHTML(resetURL))
 }

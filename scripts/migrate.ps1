@@ -1,12 +1,9 @@
-# Get the absolute path of the directory this script is in
 $scriptDir = $PSScriptRoot
 
-# Define the root of your project (one folder up)
 $projectRoot = Join-Path -Path $scriptDir -ChildPath ".."
 $envPath = Join-Path -Path $projectRoot -ChildPath ".env"
 $migrationsPath = (Resolve-Path (Join-Path -Path $projectRoot -ChildPath "migrations")).Path -replace '\\', '/'
 
-# 1. Load .env safely
 if (Test-Path $envPath) {
     Get-Content $envPath | ForEach-Object {
         if ($_ -match '^([^#][^=]+)=(.+)$') {
@@ -19,13 +16,11 @@ if (Test-Path $envPath) {
     Write-Host "Warning: .env file not found at $envPath" -ForegroundColor Yellow
 }
 
-# 2. Check if migrate CLI is installed
 if (-not (Get-Command "migrate" -ErrorAction SilentlyContinue)) {
     Write-Error "The 'migrate' CLI tool is not installed or not in your PATH. Please install it first."
     return
 }
 
-# 3. Handle Commands
 $command = $args[0]
 $name = $args[1]
 

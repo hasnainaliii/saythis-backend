@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// DBPinger is satisfied by *pgxpool.Pool and makes the handler unit-testable.
 type DBPinger interface {
 	Ping(ctx context.Context) error
 }
@@ -33,8 +32,6 @@ type response struct {
 	Checks      map[string]checkResult `json:"checks"`
 }
 
-// Handler reports the health of the service and its dependencies.
-// It is intentionally registered outside the rate-limiter middleware chain.
 type Handler struct {
 	db        DBPinger
 	env       string
@@ -48,7 +45,6 @@ func NewHandler(db DBPinger, env string, startTime time.Time) *Handler {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// ── Database check ────────────────────────────────────────────────────────
 	dbResult := checkResult{Status: statusHealthy}
 	t := time.Now()
 	if err := h.db.Ping(ctx); err != nil {
@@ -58,7 +54,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		dbResult.LatencyMs = time.Since(t).Milliseconds()
 	}
 
-	// ── Overall status ────────────────────────────────────────────────────────
 	overall := statusHealthy
 	httpCode := http.StatusOK
 	if dbResult.Status == statusUnhealthy {
@@ -79,5 +74,5 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(httpCode)
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	json.NewEncoder(w).Encode(resp)
 }

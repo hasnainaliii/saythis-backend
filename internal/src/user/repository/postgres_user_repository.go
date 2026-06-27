@@ -49,8 +49,6 @@ func (r *PostgresUserRepo) Create(ctx context.Context, user *domain.User) error 
 	return nil
 }
 
-// GetByID fetches a single user by primary key, reconstituting the domain object
-// from the row data.
 func (r *PostgresUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	query := `
 		SELECT id, email, full_name, COALESCE(avatar_url, ''), role, status,
@@ -83,9 +81,6 @@ func (r *PostgresUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.U
 	return domain.ReconstitueUser(dbID, email, fullName, avatarURL, role, status, emailVerifiedAt, createdAt, updatedAt), nil
 }
 
-// SoftDelete marks the user as deleted by setting status = 'deleted'.
-// The row is preserved for audit purposes.
-// Returns ErrUserNotFound if no user with the given ID exists.
 func (r *PostgresUserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	query := `
 		UPDATE users
@@ -103,9 +98,6 @@ func (r *PostgresUserRepo) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// UpdateFullName changes the user's full_name and returns the fully reconstituted
-// user with refreshed timestamps. Only active users can have their name updated;
-// deleted or suspended accounts are treated as not found.
 func (r *PostgresUserRepo) UpdateFullName(ctx context.Context, id uuid.UUID, fullName string, updatedAt time.Time) (*domain.User, error) {
 	query := `
 		UPDATE users
@@ -141,8 +133,6 @@ func (r *PostgresUserRepo) UpdateFullName(ctx context.Context, id uuid.UUID, ful
 	return domain.ReconstitueUser(dbID, email, dbFullName, avatarURL, role, status, emailVerifiedAt, createdAt, dbUpdatedAt), nil
 }
 
-// UpdateAvatarURL sets avatar_url for the given active user and returns the
-// fully reconstituted user with refreshed timestamps.
 func (r *PostgresUserRepo) UpdateAvatarURL(ctx context.Context, id uuid.UUID, avatarURL string, updatedAt time.Time) (*domain.User, error) {
 	query := `
 		UPDATE users
@@ -178,9 +168,6 @@ func (r *PostgresUserRepo) UpdateAvatarURL(ctx context.Context, id uuid.UUID, av
 	return domain.ReconstitueUser(dbID, email, fullName, dbAvatarURL, role, status, emailVerifiedAt, createdAt, dbUpdatedAt), nil
 }
 
-// GetByEmail fetches a single user by email address.
-// The email comparison is case-insensitive because the column is typed as CITEXT.
-// Returns ErrUserNotFound if no row matches.
 func (r *PostgresUserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
 		SELECT id, email, full_name, COALESCE(avatar_url, ''), role, status,

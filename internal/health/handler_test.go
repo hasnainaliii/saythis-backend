@@ -12,13 +12,9 @@ import (
 	"saythis-backend/internal/health"
 )
 
-// ── mock ─────────────────────────────────────────────────────────────────────
-
 type mockDB struct{ err error }
 
 func (m *mockDB) Ping(_ context.Context) error { return m.err }
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 func newHandler(dbErr error) *health.Handler {
 	return health.NewHandler(&mockDB{err: dbErr}, "test", time.Now())
@@ -39,8 +35,6 @@ func decode(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
 	}
 	return body
 }
-
-// ── tests ─────────────────────────────────────────────────────────────────────
 
 func TestHealth_Healthy(t *testing.T) {
 	rec := call(newHandler(nil))

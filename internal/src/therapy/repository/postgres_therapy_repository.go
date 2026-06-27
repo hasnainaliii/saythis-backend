@@ -13,10 +13,8 @@ import (
 	therapydomain "saythis-backend/internal/src/therapy/domain"
 )
 
-// Compile-time check: PostgresTherapyRepo must satisfy TherapyRepository.
 var _ TherapyRepository = (*PostgresTherapyRepo)(nil)
 
-// PostgresTherapyRepo is the Postgres-backed implementation of TherapyRepository.
 type PostgresTherapyRepo struct {
 	db *pgxpool.Pool
 }
@@ -25,9 +23,6 @@ func NewPostgresTherapyRepo(db *pgxpool.Pool) *PostgresTherapyRepo {
 	return &PostgresTherapyRepo{db: db}
 }
 
-// UpsertExerciseProgress inserts a new exercise progress record. If a record
-// already exists for the same (user_id, exercise_id) pair it updates the
-// rating, remarks, and completed_at in-place — preserving the original id.
 func (r *PostgresTherapyRepo) UpsertExerciseProgress(ctx context.Context, p *therapydomain.ExerciseProgress) error {
 	query := `
 		INSERT INTO exercise_progress (id, user_id, chapter_id, exercise_id, completed, rating, remarks, completed_at)
@@ -48,8 +43,6 @@ func (r *PostgresTherapyRepo) UpsertExerciseProgress(ctx context.Context, p *the
 	return nil
 }
 
-// GetProgressByUserID fetches every completed exercise record for the given user,
-// ordered by completed_at ascending so clients can reconstruct the unlock chain.
 func (r *PostgresTherapyRepo) GetProgressByUserID(ctx context.Context, userID uuid.UUID) ([]*therapydomain.ExerciseProgress, error) {
 	query := `
 		SELECT id, user_id, chapter_id, exercise_id, completed, rating, remarks, completed_at

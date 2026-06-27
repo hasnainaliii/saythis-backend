@@ -1,15 +1,3 @@
-// Package usecase implements the authentication use-case layer.
-// Each file in this package covers one distinct authentication flow:
-//
-//   - register.go        — new account creation (this file)
-//   - login.go           — credential verification and session creation
-//   - refresh.go         — access-token rotation via a valid refresh token
-//   - verify_email.go    — one-time email verification after registration
-//   - forgot_password.go — issue a password-reset link via email
-//   - reset_password.go  — consume the reset token and set a new password
-//
-// All use cases share the AuthUseCase struct and its private helpers defined
-// in this file. Methods on that struct live in their respective files.
 package usecase
 
 import (
@@ -31,12 +19,9 @@ import (
 
 const (
 	minPasswordLength = 8
-	maxPasswordLength = 72 // bcrypt silently truncates beyond this — enforce it explicitly
+	maxPasswordLength = 72
 )
 
-// AuthUseCase is the central orchestrator for all authentication flows.
-// It coordinates the user repository, auth repository, JWT configuration,
-// and the email sender but owns no database connections itself.
 type AuthUseCase struct {
 	authRepo    authrepo.AuthRepository
 	userRepo    userrepo.UserRepository
@@ -45,8 +30,6 @@ type AuthUseCase struct {
 	frontendURL string
 }
 
-// NewAuthUseCase constructs an AuthUseCase. Call this once at startup and
-// share the result across handlers — it is safe for concurrent use.
 func NewAuthUseCase(
 	authRepo authrepo.AuthRepository,
 	userRepo userrepo.UserRepository,
@@ -63,17 +46,8 @@ func NewAuthUseCase(
 	}
 }
 
-// Register creates a new user account, hashes the password, persists both
-// the user and credentials atomically, sends a verification email, then
-// issues a fresh token pair so the caller is immediately authenticated.
-//
-// Validation order:
-//  1. Password strength (empty / too short / too long)
-//  2. Email format + full-name format (delegated to userdomain.NewUser)
-//  3. Uniqueness (enforced by the DB; returns userdomain.ErrDuplicateEmail on conflict)
 func (uc *AuthUseCase) Register(ctx context.Context, email, fullName, password string) (*userdomain.User, authdomain.TokenPair, error) {
 
-	// ── 1. Password validation ────────────────────────────────────────────────
 	if strings.TrimSpace(password) == "" {
 		return nil, authdomain.TokenPair{}, authdomain.ErrEmptyPassword
 	}
@@ -84,7 +58,6 @@ func (uc *AuthUseCase) Register(ctx context.Context, email, fullName, password s
 		return nil, authdomain.TokenPair{}, authdomain.ErrPasswordTooLong
 	}
 
-	// ── 2. Build domain objects ───────────────────────────────────────────────
 	timeNow := time.Now().UTC()
 
 	user, err := userdomain.NewUser(email, fullName, userdomain.RoleUser, timeNow)
@@ -99,17 +72,12 @@ func (uc *AuthUseCase) Register(ctx context.Context, email, fullName, password s
 
 	creds := authdomain.NewAuthCredentials(user.ID(), string(hash), timeNow)
 
-	// ── 3. Persist user + credentials atomically ──────────────────────────────
 	if err = uc.authRepo.Register(ctx, user, creds); err != nil {
 		return nil, authdomain.TokenPair{}, fmt.Errorf("register: %w", err)
 	}
 
-	// ── 4. Send email verification (best-effort) ──────────────────────────────
-	// A failure here must not roll back the successful registration.
-	// The user can request a new verification link once logged in.
 	uc.dispatchVerificationEmail(ctx, user.ID(), user.Email())
 
-	// ── 5. Issue token pair ───────────────────────────────────────────────────
 	tokens, err := uc.issueTokenPair(ctx, user)
 	if err != nil {
 		return nil, authdomain.TokenPair{}, err
@@ -118,9 +86,6 @@ func (uc *AuthUseCase) Register(ctx context.Context, email, fullName, password s
 	return user, tokens, nil
 }
 
-// dispatchVerificationEmail generates a one-time token, saves its hash, and
-// sends the verification email. All errors are logged but swallowed so the
-// registration flow is never interrupted by email subsystem failures.
 func (uc *AuthUseCase) dispatchVerificationEmail(ctx context.Context, userID uuid.UUID, userEmail string) {
 	plaintext, tokenHash, err := auth.GenerateSecureToken()
 	if err != nil {
@@ -152,13 +117,6 @@ func (uc *AuthUseCase) dispatchVerificationEmail(ctx context.Context, userID uui
 	}
 }
 
-// ── Shared private helpers ────────────────────────────────────────────────────
-
-// issueTokenPair signs a new JWT access token and generates + persists a new
-// refresh token for the given user. It is called by Register, Login, and Refresh.
-//
-// The plaintext refresh token is returned to the caller (sent to the client);
-// only its SHA-256 hash is stored in the database.
 func (uc *AuthUseCase) issueTokenPair(ctx context.Context, user *userdomain.User) (authdomain.TokenPair, error) {
 	accessToken, err := auth.GenerateAccessToken(uc.jwtCfg, user.ID(), user.Email(), string(user.Role()))
 	if err != nil {

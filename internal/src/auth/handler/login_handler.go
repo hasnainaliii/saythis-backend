@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"saythis-backend/internal/src/auth/usecase"
 	"saythis-backend/internal/helper"
+	"saythis-backend/internal/src/auth/usecase"
 )
 
 type LoginHandler struct {
@@ -27,7 +27,7 @@ type loginResponse struct {
 }
 
 func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	const maxBodySize = 1 << 20 // 1 MB
+	const maxBodySize = 1 << 20
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 	defer r.Body.Close()
 
@@ -46,12 +46,13 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	helper.JSON(w, http.StatusOK, loginResponse{
 		User: userPayload{
-			ID:        user.ID(),
-			Email:     user.Email(),
-			FullName:  user.FullName(),
-			Role:      user.Role(),
-			Status:    user.Status(),
-			CreatedAt: user.CreatedAt(),
+			ID:              user.ID(),
+			Email:           user.Email(),
+			FullName:        user.FullName(),
+			Role:            user.Role(),
+			Status:          user.Status(),
+			EmailVerifiedAt: user.EmailVerifiedAt(),
+			CreatedAt:       user.CreatedAt(),
 		},
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,

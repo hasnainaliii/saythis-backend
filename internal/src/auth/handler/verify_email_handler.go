@@ -3,12 +3,10 @@ package handler
 import (
 	"net/http"
 
-	"saythis-backend/internal/src/auth/usecase"
 	"saythis-backend/internal/helper"
+	"saythis-backend/internal/src/auth/usecase"
 )
 
-// VerifyEmailHandler handles POST /api/v1/auth/verify-email.
-// It accepts a one-time token, validates it, and marks the user's email as verified.
 type VerifyEmailHandler struct {
 	usecase *usecase.AuthUseCase
 }
